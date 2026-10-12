@@ -520,7 +520,7 @@ var ExportFolderPlugin = class extends import_obsidian4.Plugin {
         if (!(file instanceof import_obsidian4.TFolder))
           return;
         menu.addItem((item) => {
-          item.setTitle("Exportar carpeta a\u2026");
+          item.setTitle("Export folder to ZIP");
           item.setIcon("archive");
           item.onClick(() => this.exportFolder(file));
         });

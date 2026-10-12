@@ -6,7 +6,7 @@ Plugin de **escritorio** que comprime carpetas del vault con motores externos de
 
 ## Características
 
-- **Menú contextual:** clic derecho sobre una carpeta → **"Exportar carpeta a…"**.
+- **Menú contextual:** clic derecho sobre una carpeta → **"Export folder to ZIP"**.
 - **Motores externos:** 7-Zip (`zip`, `7z`, `tar`, `tar.gz`) o WinRAR (`rar`, `zip`), con niveles de compresión adaptados a cada motor.
 - **Exclusiones fijas:** `.obsidian/*` y `.git/*` nunca entran al archivo.
 - **Modal de progreso:** porcentaje en tiempo real con **Cancelar** (mata el proceso y limpia el temporal) y **Enviar a segundo plano** (status bar con el progreso; click para reabrir).

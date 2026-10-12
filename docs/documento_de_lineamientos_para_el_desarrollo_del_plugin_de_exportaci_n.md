@@ -64,7 +64,7 @@ La pestaña de ajustes del plugin debe contener obligatoriamente:
 
 ### 4. Criterios de Aceptación (Definición de Terminado)
 
-1. Aparece la opción "Exportar carpeta a…" en el menú contextual al hacer clic derecho en carpetas del explorador.
+1. Aparece la opción "Export folder to ZIP" en el menú contextual al hacer clic derecho en carpetas del explorador.
 2. El sistema ejecuta el motor externo seleccionado (`spawn` sin shell) respetando rutas, formato y nivel configurados, excluyendo siempre `.obsidian/*` y `.git/*`.
 3. Durante la compresión se muestra el modal de progreso con porcentaje; Cancelar termina el proceso y limpia el temporal; "Enviar a segundo plano" deja el status bar item con el progreso y permite reabrir el modal.
 4. Al terminar, se abre el modal de guardado con las opciones "Guardar junto a la carpeta" y "Descargar".

@@ -27,7 +27,7 @@ export default class ExportFolderPlugin extends Plugin {
       this.app.workspace.on("file-menu", (menu, file) => {
         if (!(file instanceof TFolder)) return;
         menu.addItem((item) => {
-          item.setTitle("Exportar carpeta a…");
+          item.setTitle("Export folder to ZIP");
           item.setIcon("archive");
           item.onClick(() => this.exportFolder(file));
         });
