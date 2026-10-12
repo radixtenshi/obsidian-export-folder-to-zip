@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "minAppVersion": "1.4.0",
   "description": "Compress vault folders with 7-Zip or WinRAR: progress, cancel, background mode and flexible save options.",
-  "author": "Radix",
+  "author": "R4D1X",
   "authorUrl": "https://github.com/radixtenshi",
   "isDesktopOnly": true
 }
