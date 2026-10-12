@@ -45,7 +45,7 @@ src/
   modal-save.ts      # guardar junto a la carpeta / descargar
   settings.ts        # PluginSettingTab
 docs/
-  documento_de_lineamientos_para_el_desarrollo_del_plugin_de_exportación.md
+  documento_de_lineamientos_para_el_desarrollo_del_plugin_de_exportaci_n.md
 ```
 
 ## Fuera de alcance
