@@ -5,5 +5,6 @@
   "minAppVersion": "1.4.0",
   "description": "Comprime carpetas del vault con 7-Zip o WinRAR: progreso, cancelar, segundo plano y guardado flexible.",
   "author": "Radix",
+  "authorUrl": "https://github.com/radixtenshi",
   "isDesktopOnly": true
 }
