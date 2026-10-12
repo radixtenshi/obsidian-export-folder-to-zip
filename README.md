@@ -1,36 +1,36 @@
-# Export Folder to ZIP — Plugin de Obsidian
+# Export Folder to ZIP — Obsidian plugin
 
-Plugin de **escritorio** que comprime carpetas del vault con motores externos del sistema (**7-Zip** o **WinRAR**), con progreso, cancelación, segundo plano y guardado flexible.
+Desktop **Obsidian** plugin that compresses vault folders using external system engines (**7-Zip** or **WinRAR**), with progress, cancel, background mode and flexible save options.
 
-> Desktop-only: usa `child_process` para ejecutar los binarios del sistema.
+> Desktop-only: uses `child_process` to run the system binaries.
 
-## Características
+## Features
 
-- **Menú contextual:** clic derecho sobre una carpeta → **"Export folder to ZIP"**.
-- **Motores externos:** 7-Zip (`zip`, `7z`, `tar`, `tar.gz`) o WinRAR (`rar`, `zip`), con niveles de compresión adaptados a cada motor.
-- **Exclusiones fijas:** `.obsidian/*` y `.git/*` nunca entran al archivo.
-- **Modal de progreso:** porcentaje en tiempo real con **Cancelar** (mata el proceso y limpia el temporal) y **Enviar a segundo plano** (status bar con el progreso; click para reabrir).
-- **Guardado flexible:** al terminar, **"Guardar junto a la carpeta"** (al mismo nivel, nunca dentro; con sufijo timestamp si ya existe — nunca pisa) o **"Descargar"** (diálago nativo de guardado del SO).
-- **Settings:** alta/edición/borrado de binarios, autodetección de instalaciones comunes (Program Files), motor activo, formato y nivel adaptativos.
+- **Context menu:** right-click a folder → **"Export folder to ZIP"**.
+- **External engines:** 7-Zip (`zip`, `7z`, `tar`, `tar.gz`) or WinRAR (`rar`, `zip`), with compression levels tuned per engine.
+- **Fixed exclusions:** `.obsidian/*` and `.git/*` never enter the archive.
+- **Progress modal:** live percentage with **Cancel** (kills the process and cleans up the temp folder) and **Send to background** (status bar shows progress; click to reopen).
+- **Flexible save:** on finish, **"Save next to the folder"** (same level, never inside; timestamp suffix if it already exists — never overwrites) or **"Download"** (native OS save dialog).
+- **Settings:** add/edit/remove binaries, autodetect common installs (Program Files), active engine, format and level (adaptive per engine).
 
-## Instalación
+## Installation
 
-1. Crear `.obsidian/plugins/obsidian-export-folder-to-zip/` dentro de tu vault.
-2. Copiar ahí `manifest.json` y `main.js` (vienen compilados en el repo).
-3. Reiniciar Obsidian → **Settings → Community plugins** → habilitar **Export Folder to ZIP**.
-4. Ir a **Settings → Export Folder to ZIP** → **"Detectar instalados"** (o agregar el binario a mano) y elegir motor activo, formato y nivel.
+1. Create `.obsidian/plugins/obsidian-export-folder-to-zip/` inside your vault.
+2. Copy `manifest.json` and `main.js` into it (already compiled in this repo).
+3. Restart Obsidian → **Settings → Community plugins** → enable **Export Folder to ZIP**.
+4. Go to **Settings → Export Folder to ZIP** → **"Detect installed"** (or add the binary manually) and pick the active engine, format and level.
 
-## Desarrollo
+## Development
 
-Requiere [Node.js](https://nodejs.org/) 18+.
+Requires [Node.js](https://nodejs.org/) 18+.
 
 ```bash
-npm install        # dependencias
-npm run build      # typecheck + bundle de producción → main.js
+npm install        # dependencies
+npm run build      # typecheck + production bundle → main.js
 npm run dev        # watch mode
 ```
 
-### Estructura
+### Structure
 
 ```
 manifest.json
@@ -38,23 +38,23 @@ versions.json
 esbuild.config.mjs
 tsconfig.json
 src/
-  main.ts            # entrada: file-menu + orquestación de jobs
-  engines.ts         # mapeo fijo 7-Zip/WinRAR + args + autodetección
-  compress.ts        # spawn sin shell + progreso + cancel + move con sufijo
-  modal-progress.ts  # progreso / cancelar / segundo plano + status bar
-  modal-save.ts      # guardar junto a la carpeta / descargar
+  main.ts            # entry: file-menu + job orchestration
+  engines.ts         # fixed 7-Zip/WinRAR mapping + args + autodetect
+  compress.ts        # spawn without shell + progress + cancel + move with suffix
+  modal-progress.ts  # progress / cancel / background + status bar
+  modal-save.ts      # save next to folder / download dialog
   settings.ts        # PluginSettingTab
 docs/
   documento_de_lineamientos_para_el_desarrollo_del_plugin_de_exportaci_n.md
 ```
 
-## Fuera de alcance
+## Out of scope
 
-- Uso en móvil (desktop-only).
-- Motores embebidos (solo binarios externos).
-- Descompresión de archives.
-- Exports automáticos programados.
+- Mobile use (desktop-only).
+- Embedded engines (external binaries only).
+- Extracting/decompressing archives.
+- Scheduled automatic exports.
 
-## Licencia
+## License
 
 MIT

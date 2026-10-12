@@ -3,7 +3,7 @@
   "name": "Export Folder to ZIP",
   "version": "1.0.0",
   "minAppVersion": "1.4.0",
-  "description": "Comprime carpetas del vault con 7-Zip o WinRAR: progreso, cancelar, segundo plano y guardado flexible.",
+  "description": "Compress vault folders with 7-Zip or WinRAR: progress, cancel, background mode and flexible save options.",
   "author": "Radix",
   "authorUrl": "https://github.com/radixtenshi",
   "isDesktopOnly": true
