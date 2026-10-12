@@ -15,7 +15,7 @@ Desktop **Obsidian** plugin that compresses vault folders using external system 
 
 ## Installation
 
-1. Create `.obsidian/plugins/obsidian-export-folder-to-zip/` inside your vault.
+1. Create `.obsidian/plugins/export-folder-to-zip/` inside your vault.
 2. Copy `manifest.json` and `main.js` into it (already compiled in this repo).
 3. Restart Obsidian → **Settings → Community plugins** → enable **Export Folder to ZIP**.
 4. Go to **Settings → Export Folder to ZIP** → **"Detect installed"** (or add the binary manually) and pick the active engine, format and level.

@@ -39,7 +39,7 @@ La pestaña de ajustes del plugin debe contener obligatoriamente:
 ### 3. Requerimientos Técnicos y de Arquitectura (Para el Agente de Programación)
 
 * **Entorno:** Obsidian Desktop App (plugin *desktop-only*, `isDesktopOnly: true` en manifest, por la dependencia de Node.js `child_process`).
-* **Idioma de la UI:** Español. **Identificador interno:** `obsidian-export-folder-to-zip`.
+* **Idioma de la UI:** Español. **Identificador interno:** `export-folder-to-zip` (renombrado de `obsidian-export-folder-to-zip`: el catálogo de comunidad prohíbe `obsidian` en el ID).
 * **APIs de Obsidian:**
   * Extender `Plugin` y registrar el evento en el menú contextual mediante `this.registerEvent(this.app.workspace.on('file-menu', ...))`, mostrando la opción solo para `TFolder`.
   * Extender `Modal` para el modal de progreso y el modal de guardado.

@@ -1,5 +1,5 @@
 {
-  "name": "obsidian-export-folder-to-zip",
+  "name": "export-folder-to-zip",
   "version": "1.0.0",
   "description": "Export vault folders to ZIP/7z/RAR using external compression engines",
   "main": "main.js",
