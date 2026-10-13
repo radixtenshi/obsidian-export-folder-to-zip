@@ -53,8 +53,13 @@ export const ENGINES: Record<EngineKind, EngineSpec> = {
   },
 };
 
-const EXCLUDES_7Z = ["-x!.obsidian/*", "-x!.git/*", "-x!*/.obsidian/*", "-x!*/.git/*"];
-const EXCLUDES_RAR = ["-x.obsidian", "-x.git", "-x*/.obsidian", "-x*/.git"];
+function excludes7z(configDir: string): string[] {
+  return [`-x!${configDir}/*`, "-x!.git/*", `-x!*/${configDir}/*`, "-x!*/.git/*"];
+}
+
+function excludesRar(configDir: string): string[] {
+  return [`-x${configDir}`, "-x.git", `-x*/${configDir}`, "-x*/.git"];
+}
 
 export function engineKindForBinary(path: string): EngineKind | null {
   const p = path.toLowerCase();
@@ -87,23 +92,24 @@ export function buildArgs(
   folderName: string,
   formatId: string,
   levelId: string,
-  archivePath: string
+  archivePath: string,
+  configDir: string
 ): string[] {
   const kind = engineKindForBinary(binaryPath);
   const raw =
     kind === "winrar"
-      ? buildWinrarArgs(formatId, levelId, folderName)
-      : build7zArgs(formatId, levelId, folderName);
+      ? buildWinrarArgs(formatId, levelId, folderName, configDir)
+      : build7zArgs(formatId, levelId, folderName, configDir);
   return raw.map((a) => (a === ARCHIVE_PLACEHOLDER ? archivePath : a));
 }
 
-function build7zArgs(formatId: string, levelId: string, folderName: string): string[] {
-  return ["a", `-t${formatId}`, `-mx=${levelId}`, "-y", ARCHIVE_PLACEHOLDER, folderName, ...EXCLUDES_7Z];
+function build7zArgs(formatId: string, levelId: string, folderName: string, configDir: string): string[] {
+  return ["a", `-t${formatId}`, `-mx=${levelId}`, "-y", ARCHIVE_PLACEHOLDER, folderName, ...excludes7z(configDir)];
 }
 
-function buildWinrarArgs(formatId: string, levelId: string, folderName: string): string[] {
+function buildWinrarArgs(formatId: string, levelId: string, folderName: string, configDir: string): string[] {
   const args = ["a", "-inul", "-y", `-m${levelId}`];
   if (formatId === "zip") args.push("-afzip");
-  args.push(ARCHIVE_PLACEHOLDER, folderName, ...EXCLUDES_RAR);
+  args.push(ARCHIVE_PLACEHOLDER, folderName, ...excludesRar(configDir));
   return args;
 }

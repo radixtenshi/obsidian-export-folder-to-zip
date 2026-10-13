@@ -15,22 +15,26 @@ export class ProgressModal extends Modal {
     this.contentEl.createEl("p", { text: `Comprimiendo «${this.folderName}»…` });
 
     const bar = this.contentEl.createDiv();
-    bar.style.height = "8px";
-    bar.style.borderRadius = "4px";
-    bar.style.background = "var(--background-modifier-border)";
-    bar.style.overflow = "hidden";
-    bar.style.marginBottom = "8px";
+    bar.setCssProps({
+      height: "8px",
+      "border-radius": "4px",
+      background: "var(--background-modifier-border)",
+      overflow: "hidden",
+      "margin-bottom": "8px",
+    });
     this.fillEl = bar.createDiv();
-    this.fillEl.style.height = "100%";
-    this.fillEl.style.width = "0%";
-    this.fillEl.style.background = "var(--interactive-accent)";
-    this.fillEl.style.transition = "width 0.2s";
+    this.fillEl.setCssProps({
+      height: "100%",
+      width: "0%",
+      background: "var(--interactive-accent)",
+      transition: "width 0.2s",
+    });
 
     this.pctEl = this.contentEl.createEl("p", { text: "Iniciando…" });
 
     const buttons = new Setting(this.contentEl);
     buttons.addButton((b) =>
-      b.setButtonText("Cancelar").setWarning().onClick(() => {
+      b.setButtonText("Cancelar").setDestructive().onClick(() => {
         this.plugin.cancelJob();
         this.close();
       })
@@ -48,7 +52,7 @@ export class ProgressModal extends Modal {
       return;
     }
     this.pctEl.setText(`${percent}%`);
-    this.fillEl.style.width = `${percent}%`;
+    this.fillEl.setCssProps({ width: `${percent}%` });
   }
 
   onClose() {

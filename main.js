@@ -27,7 +27,7 @@ __export(main_exports, {
   default: () => ExportFolderPlugin
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian4 = require("obsidian");
+var import_obsidian5 = require("obsidian");
 var import_fs4 = require("fs");
 var import_path3 = require("path");
 
@@ -71,8 +71,12 @@ var ENGINES = {
     ]
   }
 };
-var EXCLUDES_7Z = ["-x!.obsidian/*", "-x!.git/*", "-x!*/.obsidian/*", "-x!*/.git/*"];
-var EXCLUDES_RAR = ["-x.obsidian", "-x.git", "-x*/.obsidian", "-x*/.git"];
+function excludes7z(configDir) {
+  return [`-x!${configDir}/*`, "-x!.git/*", `-x!*/${configDir}/*`, "-x!*/.git/*"];
+}
+function excludesRar(configDir) {
+  return [`-x${configDir}`, "-x.git", `-x*/${configDir}`, "-x*/.git"];
+}
 function engineKindForBinary(path) {
   const p = path.toLowerCase();
   if (p.includes("7z"))
@@ -99,30 +103,31 @@ function detectInstalled() {
   return found;
 }
 var ARCHIVE_PLACEHOLDER = "__ARCHIVE__";
-function buildArgs(binaryPath, folderName, formatId, levelId, archivePath) {
+function buildArgs(binaryPath, folderName, formatId, levelId, archivePath, configDir) {
   const kind = engineKindForBinary(binaryPath);
-  const raw = kind === "winrar" ? buildWinrarArgs(formatId, levelId, folderName) : build7zArgs(formatId, levelId, folderName);
+  const raw = kind === "winrar" ? buildWinrarArgs(formatId, levelId, folderName, configDir) : build7zArgs(formatId, levelId, folderName, configDir);
   return raw.map((a) => a === ARCHIVE_PLACEHOLDER ? archivePath : a);
 }
-function build7zArgs(formatId, levelId, folderName) {
-  return ["a", `-t${formatId}`, `-mx=${levelId}`, "-y", ARCHIVE_PLACEHOLDER, folderName, ...EXCLUDES_7Z];
+function build7zArgs(formatId, levelId, folderName, configDir) {
+  return ["a", `-t${formatId}`, `-mx=${levelId}`, "-y", ARCHIVE_PLACEHOLDER, folderName, ...excludes7z(configDir)];
 }
-function buildWinrarArgs(formatId, levelId, folderName) {
+function buildWinrarArgs(formatId, levelId, folderName, configDir) {
   const args = ["a", "-inul", "-y", `-m${levelId}`];
   if (formatId === "zip")
     args.push("-afzip");
-  args.push(ARCHIVE_PLACEHOLDER, folderName, ...EXCLUDES_RAR);
+  args.push(ARCHIVE_PLACEHOLDER, folderName, ...excludesRar(configDir));
   return args;
 }
 
 // src/compress.ts
 var CompressionJob = class {
-  constructor(binaryPath, parentDir, folderName, formatId, levelId, cb) {
+  constructor(binaryPath, parentDir, folderName, formatId, levelId, configDir, cb) {
     this.binaryPath = binaryPath;
     this.parentDir = parentDir;
     this.folderName = folderName;
     this.formatId = formatId;
     this.levelId = levelId;
+    this.configDir = configDir;
     this.cb = cb;
     this.child = null;
     this.cancelled = false;
@@ -134,7 +139,7 @@ var CompressionJob = class {
   start() {
     (0, import_fs2.mkdirSync)(this.tempDir, { recursive: true });
     if (this.formatId === "tgz") {
-      const args = buildArgs(this.binaryPath, this.folderName, "tar", this.levelId, this.tarPath);
+      const args = buildArgs(this.binaryPath, this.folderName, "tar", this.levelId, this.tarPath, this.configDir);
       this.spawnOnce(args, (code, stderr) => {
         if (this.cancelled)
           return;
@@ -153,7 +158,7 @@ var CompressionJob = class {
         });
       });
     } else {
-      const args = buildArgs(this.binaryPath, this.folderName, this.formatId, this.levelId, this.archivePath);
+      const args = buildArgs(this.binaryPath, this.folderName, this.formatId, this.levelId, this.archivePath, this.configDir);
       this.spawnOnce(args, (code, stderr) => {
         if (this.cancelled)
           return;
@@ -246,20 +251,24 @@ var ProgressModal = class extends import_obsidian.Modal {
     this.titleEl.setText("Exportando carpeta");
     this.contentEl.createEl("p", { text: `Comprimiendo \xAB${this.folderName}\xBB\u2026` });
     const bar = this.contentEl.createDiv();
-    bar.style.height = "8px";
-    bar.style.borderRadius = "4px";
-    bar.style.background = "var(--background-modifier-border)";
-    bar.style.overflow = "hidden";
-    bar.style.marginBottom = "8px";
+    bar.setCssProps({
+      height: "8px",
+      "border-radius": "4px",
+      background: "var(--background-modifier-border)",
+      overflow: "hidden",
+      "margin-bottom": "8px"
+    });
     this.fillEl = bar.createDiv();
-    this.fillEl.style.height = "100%";
-    this.fillEl.style.width = "0%";
-    this.fillEl.style.background = "var(--interactive-accent)";
-    this.fillEl.style.transition = "width 0.2s";
+    this.fillEl.setCssProps({
+      height: "100%",
+      width: "0%",
+      background: "var(--interactive-accent)",
+      transition: "width 0.2s"
+    });
     this.pctEl = this.contentEl.createEl("p", { text: "Iniciando\u2026" });
     const buttons = new import_obsidian.Setting(this.contentEl);
     buttons.addButton(
-      (b) => b.setButtonText("Cancelar").setWarning().onClick(() => {
+      (b) => b.setButtonText("Cancelar").setDestructive().onClick(() => {
         this.plugin.cancelJob();
         this.close();
       })
@@ -276,7 +285,7 @@ var ProgressModal = class extends import_obsidian.Modal {
       return;
     }
     this.pctEl.setText(`${percent}%`);
-    this.fillEl.style.width = `${percent}%`;
+    this.fillEl.setCssProps({ width: `${percent}%` });
   }
   onClose() {
     if (this.plugin.progressModal === this)
@@ -392,117 +401,200 @@ var SaveModal = class extends import_obsidian2.Modal {
 };
 
 // src/settings.ts
+var import_obsidian4 = require("obsidian");
+
+// src/modal-binary.ts
 var import_obsidian3 = require("obsidian");
+var BinaryModal = class extends import_obsidian3.Modal {
+  constructor(app, entry, isNew, onSave) {
+    super(app);
+    this.isNew = isNew;
+    this.onSave = onSave;
+    this.nameValue = entry.name;
+    this.pathValue = entry.path;
+  }
+  onOpen() {
+    this.titleEl.setText(this.isNew ? "Agregar binario" : "Editar binario");
+    new import_obsidian3.Setting(this.contentEl).setName("Nombre").setDesc("Etiqueta para identificar el motor.").addText(
+      (t) => t.setValue(this.nameValue).setPlaceholder("7-Zip").onChange((v) => {
+        this.nameValue = v;
+      })
+    );
+    new import_obsidian3.Setting(this.contentEl).setName("Ruta del ejecutable").setDesc("Ruta completa de 7z.exe, WinRAR.exe o Rar.exe.").addText(
+      (t) => t.setValue(this.pathValue).setPlaceholder("C:\\Program Files\\7-Zip\\7z.exe").onChange((v) => {
+        this.pathValue = v.trim();
+      })
+    );
+    const buttons = new import_obsidian3.Setting(this.contentEl);
+    buttons.addButton(
+      (b) => b.setButtonText("Guardar").setCta().onClick(() => {
+        if (!this.pathValue) {
+          new import_obsidian3.Notice("Indic\xE1 la ruta del ejecutable.");
+          return;
+        }
+        this.onSave({ name: this.nameValue.trim(), path: this.pathValue });
+        this.close();
+      })
+    );
+    buttons.addButton(
+      (b) => b.setButtonText("Cancelar").onClick(() => {
+        this.close();
+      })
+    );
+  }
+  onClose() {
+    this.contentEl.empty();
+  }
+};
+
+// src/settings.ts
 var DEFAULT_SETTINGS = {
   binaries: [],
   activeBinaryPath: "",
   formatId: "zip",
   levelId: "5"
 };
-var ExportSettingTab = class extends import_obsidian3.PluginSettingTab {
+var ExportSettingTab = class extends import_obsidian4.PluginSettingTab {
   constructor(app, plugin) {
     super(app, plugin);
     this.plugin = plugin;
   }
-  display() {
-    const { containerEl } = this;
-    containerEl.empty();
-    containerEl.createEl("h3", { text: "Motores de compresi\xF3n" });
-    for (let i = 0; i < this.plugin.settings.binaries.length; i++) {
-      const entry = this.plugin.settings.binaries[i];
-      new import_obsidian3.Setting(containerEl).addText(
-        (t) => t.setPlaceholder("Nombre").setValue(entry.name).onChange(async (v) => {
-          entry.name = v;
-          await this.plugin.saveSettings();
-        })
-      ).addText(
-        (t) => t.setPlaceholder("Ruta del ejecutable").setValue(entry.path).onChange(async (v) => {
-          entry.path = v.trim();
-          await this.plugin.saveSettings();
-        })
-      ).addButton(
-        (b) => b.setButtonText("Quitar").setWarning().onClick(async () => {
-          this.plugin.settings.binaries.splice(i, 1);
-          if (this.plugin.settings.activeBinaryPath === entry.path) {
-            this.plugin.settings.activeBinaryPath = "";
-          }
-          await this.plugin.saveSettings();
-          this.display();
-        })
-      );
+  getSettingDefinitions() {
+    const s = this.plugin.settings;
+    const kind = engineKindForBinary(s.activeBinaryPath);
+    const activeOptions = { "": "\u2014 seleccionar \u2014" };
+    const formatOptions = {};
+    const levelOptions = {};
+    for (const b of s.binaries) {
+      if (b.path)
+        activeOptions[b.path] = b.name || b.path;
     }
-    new import_obsidian3.Setting(containerEl).addButton(
-      (b) => b.setButtonText("Agregar binario").onClick(async () => {
-        this.plugin.settings.binaries.push({ name: "", path: "" });
-        await this.plugin.saveSettings();
-        this.display();
-      })
-    ).addButton(
-      (b) => b.setButtonText("Detectar instalados").onClick(async () => {
-        const found = detectInstalled();
-        let added = 0;
-        for (const f of found) {
-          if (!this.plugin.settings.binaries.some((x) => x.path === f.path)) {
-            this.plugin.settings.binaries.push(f);
-            added++;
-          }
-        }
-        if (!this.plugin.settings.activeBinaryPath && this.plugin.settings.binaries.length) {
-          this.plugin.settings.activeBinaryPath = this.plugin.settings.binaries[0].path;
-        }
-        await this.plugin.saveSettings();
-        this.display();
-        if (!added)
-          new import_obsidian3.Notice("No se detectaron binarios nuevos.");
-      })
-    );
-    containerEl.createEl("h3", { text: "Preferencias de exportaci\xF3n" });
-    new import_obsidian3.Setting(containerEl).setName("Motor activo").setDesc("Binario que se usa por defecto para comprimir.").addDropdown((d) => {
-      d.addOption("", "\u2014 seleccionar \u2014");
-      for (const b of this.plugin.settings.binaries) {
-        if (b.path)
-          d.addOption(b.path, `${b.name || b.path}`);
-      }
-      d.setValue(this.plugin.settings.activeBinaryPath).onChange(async (v) => {
-        this.plugin.settings.activeBinaryPath = v;
-        const kind2 = engineKindForBinary(v);
-        if (kind2) {
-          this.plugin.settings.formatId = ENGINES[kind2].formats[0].id;
-          this.plugin.settings.levelId = ENGINES[kind2].levels.some((l) => l.id === "5") ? "5" : ENGINES[kind2].levels[0].id;
-        }
-        await this.plugin.saveSettings();
-        this.display();
-      });
-    });
-    const kind = engineKindForBinary(this.plugin.settings.activeBinaryPath);
     if (kind) {
-      const spec = ENGINES[kind];
-      new import_obsidian3.Setting(containerEl).setName("Formato de salida").setDesc(`Formatos soportados por ${spec.label}.`).addDropdown((d) => {
-        for (const f of spec.formats)
-          d.addOption(f.id, f.label);
-        d.setValue(spec.formats.some((f) => f.id === this.plugin.settings.formatId) ? this.plugin.settings.formatId : spec.formats[0].id).onChange(async (v) => {
-          this.plugin.settings.formatId = v;
-          await this.plugin.saveSettings();
-        });
-      });
-      new import_obsidian3.Setting(containerEl).setName("Nivel de compresi\xF3n").addDropdown((d) => {
-        for (const l of spec.levels)
-          d.addOption(l.id, l.label);
-        d.setValue(spec.levels.some((l) => l.id === this.plugin.settings.levelId) ? this.plugin.settings.levelId : spec.levels[0].id).onChange(async (v) => {
-          this.plugin.settings.levelId = v;
-          await this.plugin.saveSettings();
-        });
-      });
-    } else if (this.plugin.settings.activeBinaryPath) {
-      containerEl.createEl("p", {
-        text: "El binario activo no se reconoce como 7-Zip ni WinRAR."
-      });
+      for (const f of ENGINES[kind].formats)
+        formatOptions[f.id] = f.label;
+      for (const l of ENGINES[kind].levels)
+        levelOptions[l.id] = l.label;
     }
+    const activeDesc = !s.activeBinaryPath ? "Binario que se usa por defecto para comprimir." : kind ? "Binario que se usa por defecto para comprimir." : "El binario activo no se reconoce como 7-Zip ni WinRAR.";
+    return [
+      {
+        type: "list",
+        heading: "Motores de compresi\xF3n",
+        emptyState: "Sin binarios configurados.",
+        addItem: {
+          name: "Agregar binario",
+          action: () => this.editBinary(null)
+        },
+        extraButtons: [
+          (b) => b.setIcon("lucide-search").setTooltip("Detectar instalados").onClick(() => {
+            void this.detectBinaries();
+          })
+        ],
+        onDelete: (index) => {
+          void this.removeBinary(index);
+        },
+        items: s.binaries.map((entry) => ({
+          name: entry.name || entry.path || "Binario sin nombre",
+          searchable: false,
+          action: (_el, index) => this.editBinary(index)
+        }))
+      },
+      {
+        type: "group",
+        heading: "Preferencias de exportaci\xF3n",
+        items: [
+          {
+            name: "Motor activo",
+            desc: activeDesc,
+            control: { type: "dropdown", key: "activeBinaryPath", options: activeOptions }
+          },
+          {
+            name: "Formato de salida",
+            desc: kind ? `Formatos soportados por ${ENGINES[kind].label}.` : void 0,
+            visible: kind !== null,
+            control: { type: "dropdown", key: "formatId", options: formatOptions }
+          },
+          {
+            name: "Nivel de compresi\xF3n",
+            visible: kind !== null,
+            control: { type: "dropdown", key: "levelId", options: levelOptions }
+          }
+        ]
+      }
+    ];
+  }
+  async setControlValue(key, value) {
+    const s = this.plugin.settings;
+    switch (key) {
+      case "activeBinaryPath": {
+        const path = String(value);
+        s.activeBinaryPath = path;
+        const kind = engineKindForBinary(path);
+        if (kind) {
+          s.formatId = ENGINES[kind].formats[0].id;
+          s.levelId = ENGINES[kind].levels.some((l) => l.id === "5") ? "5" : ENGINES[kind].levels[0].id;
+        }
+        break;
+      }
+      case "formatId":
+        s.formatId = String(value);
+        break;
+      case "levelId":
+        s.levelId = String(value);
+        break;
+      default:
+        return;
+    }
+    await this.plugin.saveSettings();
+    this.update();
+  }
+  editBinary(index) {
+    const isNew = index === null;
+    const current = isNew ? { name: "", path: "" } : { ...this.plugin.settings.binaries[index] };
+    new BinaryModal(this.app, current, isNew, async (value) => {
+      const s = this.plugin.settings;
+      if (index === null) {
+        s.binaries.push(value);
+      } else {
+        const previous = s.binaries[index];
+        if (s.activeBinaryPath === previous.path)
+          s.activeBinaryPath = value.path;
+        s.binaries[index] = value;
+      }
+      await this.plugin.saveSettings();
+      this.update();
+    }).open();
+  }
+  async removeBinary(index) {
+    const [removed] = this.plugin.settings.binaries.splice(index, 1);
+    if (removed && this.plugin.settings.activeBinaryPath === removed.path) {
+      this.plugin.settings.activeBinaryPath = "";
+    }
+    await this.plugin.saveSettings();
+    this.update();
+  }
+  async detectBinaries() {
+    const s = this.plugin.settings;
+    const found = detectInstalled();
+    let added = 0;
+    for (const f of found) {
+      if (!s.binaries.some((x) => x.path === f.path)) {
+        s.binaries.push(f);
+        added++;
+      }
+    }
+    if (!s.activeBinaryPath && s.binaries.length) {
+      s.activeBinaryPath = s.binaries[0].path;
+    }
+    await this.plugin.saveSettings();
+    this.update();
+    if (!added)
+      new import_obsidian4.Notice("No se detectaron binarios nuevos.");
   }
 };
 
 // src/main.ts
-var ExportFolderPlugin = class extends import_obsidian4.Plugin {
+var ExportFolderPlugin = class extends import_obsidian5.Plugin {
   constructor() {
     super(...arguments);
     this.job = null;
@@ -513,11 +605,12 @@ var ExportFolderPlugin = class extends import_obsidian4.Plugin {
     this.lastExt = "";
   }
   async onload() {
-    this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    const data = await this.loadData();
+    this.settings = Object.assign({}, DEFAULT_SETTINGS, data != null ? data : {});
     this.statusBar = this.addStatusBarItem();
     this.registerEvent(
       this.app.workspace.on("file-menu", (menu, file) => {
-        if (!(file instanceof import_obsidian4.TFolder))
+        if (!(file instanceof import_obsidian5.TFolder))
           return;
         menu.addItem((item) => {
           item.setTitle("Export folder to ZIP");
@@ -537,24 +630,24 @@ var ExportFolderPlugin = class extends import_obsidian4.Plugin {
   exportFolder(folder) {
     var _a, _b;
     if (this.job) {
-      new import_obsidian4.Notice("Ya hay una exportaci\xF3n en curso.");
+      new import_obsidian5.Notice("Ya hay una exportaci\xF3n en curso.");
       return;
     }
     const adapter = this.app.vault.adapter;
-    if (!(adapter instanceof import_obsidian4.FileSystemAdapter)) {
-      new import_obsidian4.Notice("Este plugin requiere un vault local (Obsidian Desktop).");
+    if (!(adapter instanceof import_obsidian5.FileSystemAdapter)) {
+      new import_obsidian5.Notice("Este plugin requiere un vault local (Obsidian Desktop).");
       return;
     }
     const bin = this.settings.binaries.find((b) => b.path === this.settings.activeBinaryPath);
     if (!bin || !bin.path || !(0, import_fs4.existsSync)(bin.path)) {
-      new import_obsidian4.Notice("Configur\xE1 un motor de compresi\xF3n en Settings \u2192 Export Folder to ZIP.");
+      new import_obsidian5.Notice("Configur\xE1 un motor de compresi\xF3n en Settings \u2192 Export Folder to ZIP.");
       this.app.setting.open();
       this.app.setting.openTabById(this.manifest.id);
       return;
     }
     const kind = engineKindForBinary(bin.path);
     if (!kind) {
-      new import_obsidian4.Notice("El binario activo no se reconoce como 7-Zip ni WinRAR.");
+      new import_obsidian5.Notice("El binario activo no se reconoce como 7-Zip ni WinRAR.");
       return;
     }
     const spec = ENGINES[kind];
@@ -567,11 +660,19 @@ var ExportFolderPlugin = class extends import_obsidian4.Plugin {
     this.lastParentDir = parentDir;
     this.lastBaseName = folder.name;
     this.lastExt = format.ext;
-    const job = new CompressionJob(bin.path, parentDir, folder.name, format.id, level.id, {
-      onProgress: (pct) => this.onProgress(pct),
-      onDone: (p) => this.onDone(p),
-      onError: (m) => this.onError(m)
-    });
+    const job = new CompressionJob(
+      bin.path,
+      parentDir,
+      folder.name,
+      format.id,
+      level.id,
+      this.app.vault.configDir,
+      {
+        onProgress: (pct) => this.onProgress(pct),
+        onDone: (p) => this.onDone(p),
+        onError: (m) => this.onError(m)
+      }
+    );
     this.job = job;
     this.statusBar.setText(`\u{1F4E6} Comprimiendo ${folder.name}\u2026`);
     this.statusBar.setAttr("title", "Export Folder to ZIP \u2014 click para ver el progreso");
@@ -592,7 +693,7 @@ var ExportFolderPlugin = class extends import_obsidian4.Plugin {
     (_a = this.progressModal) == null ? void 0 : _a.close();
     this.statusBar.setText("");
     this.statusBar.hide();
-    new import_obsidian4.Notice(`Compresi\xF3n de \xAB${(_b = this.job) == null ? void 0 : _b.folderName}\xBB finalizada.`);
+    new import_obsidian5.Notice(`Compresi\xF3n de \xAB${(_b = this.job) == null ? void 0 : _b.folderName}\xBB finalizada.`);
     new SaveModal(
       this,
       archivePath,
@@ -608,7 +709,7 @@ var ExportFolderPlugin = class extends import_obsidian4.Plugin {
     this.statusBar.setText("");
     this.statusBar.hide();
     this.job = null;
-    new import_obsidian4.Notice(`Error al comprimir: ${message}`);
+    new import_obsidian5.Notice(`Error al comprimir: ${message}`);
   }
   cancelJob() {
     var _a;

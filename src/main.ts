@@ -2,7 +2,7 @@ import { FileSystemAdapter, Notice, Plugin, TFolder } from "obsidian";
 
 type StatusBarItem = ReturnType<Plugin["addStatusBarItem"]>;
 import { existsSync } from "fs";
-import { dirname, join } from "path";
+import { join } from "path";
 import { CompressionJob } from "./compress";
 import { ENGINES, engineKindForBinary } from "./engines";
 import { ProgressModal } from "./modal-progress";
@@ -20,7 +20,8 @@ export default class ExportFolderPlugin extends Plugin {
   private lastExt = "";
 
   async onload() {
-    this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    const data = (await this.loadData()) as Partial<ExportSettings> | null;
+    this.settings = Object.assign({}, DEFAULT_SETTINGS, data ?? {});
     this.statusBar = this.addStatusBarItem();
 
     this.registerEvent(
@@ -81,11 +82,19 @@ export default class ExportFolderPlugin extends Plugin {
     this.lastBaseName = folder.name;
     this.lastExt = format.ext;
 
-    const job = new CompressionJob(bin.path, parentDir, folder.name, format.id, level.id, {
-      onProgress: (pct) => this.onProgress(pct),
-      onDone: (p) => this.onDone(p),
-      onError: (m) => this.onError(m),
-    });
+    const job = new CompressionJob(
+      bin.path,
+      parentDir,
+      folder.name,
+      format.id,
+      level.id,
+      this.app.vault.configDir,
+      {
+        onProgress: (pct) => this.onProgress(pct),
+        onDone: (p) => this.onDone(p),
+        onError: (m) => this.onError(m),
+      }
+    );
     this.job = job;
 
     this.statusBar.setText(`📦 Comprimiendo ${folder.name}…`);

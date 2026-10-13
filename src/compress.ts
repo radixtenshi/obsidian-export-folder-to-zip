@@ -23,6 +23,7 @@ export class CompressionJob {
     readonly folderName: string,
     readonly formatId: string,
     private levelId: string,
+    private configDir: string,
     private cb: JobCallbacks
   ) {
     this.tempDir = join(tmpdir(), `obsidian-export-${Date.now()}`);
@@ -35,7 +36,7 @@ export class CompressionJob {
     mkdirSync(this.tempDir, { recursive: true });
 
     if (this.formatId === "tgz") {
-      const args = buildArgs(this.binaryPath, this.folderName, "tar", this.levelId, this.tarPath);
+      const args = buildArgs(this.binaryPath, this.folderName, "tar", this.levelId, this.tarPath, this.configDir);
       this.spawnOnce(args, (code, stderr) => {
         if (this.cancelled) return;
         if (code !== 0) return this.fail(stderr || `El proceso terminó con código ${code}`);
@@ -51,7 +52,7 @@ export class CompressionJob {
         });
       });
     } else {
-      const args = buildArgs(this.binaryPath, this.folderName, this.formatId, this.levelId, this.archivePath);
+      const args = buildArgs(this.binaryPath, this.folderName, this.formatId, this.levelId, this.archivePath, this.configDir);
       this.spawnOnce(args, (code, stderr) => {
         if (this.cancelled) return;
         if (code !== 0) return this.fail(stderr || `El proceso terminó con código ${code}`);

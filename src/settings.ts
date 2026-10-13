@@ -1,5 +1,6 @@
-import { App, Notice, PluginSettingTab, Setting } from "obsidian";
+import { App, Notice, PluginSettingTab, SettingDefinitionItem } from "obsidian";
 import { ENGINES, detectInstalled, engineKindForBinary } from "./engines";
+import { BinaryModal } from "./modal-binary";
 import type ExportFolderPlugin from "./main";
 
 export interface BinaryEntry {
@@ -26,119 +27,147 @@ export class ExportSettingTab extends PluginSettingTab {
     super(app, plugin);
   }
 
-  display(): void {
-    const { containerEl } = this;
-    containerEl.empty();
+  getSettingDefinitions(): SettingDefinitionItem[] {
+    const s = this.plugin.settings;
+    const kind = engineKindForBinary(s.activeBinaryPath);
 
-    containerEl.createEl("h3", { text: "Motores de compresión" });
-
-    for (let i = 0; i < this.plugin.settings.binaries.length; i++) {
-      const entry = this.plugin.settings.binaries[i];
-      new Setting(containerEl)
-        .addText((t) =>
-          t.setPlaceholder("Nombre").setValue(entry.name).onChange(async (v) => {
-            entry.name = v;
-            await this.plugin.saveSettings();
-          })
-        )
-        .addText((t) =>
-          t.setPlaceholder("Ruta del ejecutable").setValue(entry.path).onChange(async (v) => {
-            entry.path = v.trim();
-            await this.plugin.saveSettings();
-          })
-        )
-        .addButton((b) =>
-          b.setButtonText("Quitar").setWarning().onClick(async () => {
-            this.plugin.settings.binaries.splice(i, 1);
-            if (this.plugin.settings.activeBinaryPath === entry.path) {
-              this.plugin.settings.activeBinaryPath = "";
-            }
-            await this.plugin.saveSettings();
-            this.display();
-          })
-        );
+    const activeOptions: Record<string, string> = { "": "— seleccionar —" };
+    const formatOptions: Record<string, string> = {};
+    const levelOptions: Record<string, string> = {};
+    for (const b of s.binaries) {
+      if (b.path) activeOptions[b.path] = b.name || b.path;
     }
-
-    new Setting(containerEl)
-      .addButton((b) =>
-        b.setButtonText("Agregar binario").onClick(async () => {
-          this.plugin.settings.binaries.push({ name: "", path: "" });
-          await this.plugin.saveSettings();
-          this.display();
-        })
-      )
-      .addButton((b) =>
-        b.setButtonText("Detectar instalados").onClick(async () => {
-          const found = detectInstalled();
-          let added = 0;
-          for (const f of found) {
-            if (!this.plugin.settings.binaries.some((x) => x.path === f.path)) {
-              this.plugin.settings.binaries.push(f);
-              added++;
-            }
-          }
-          if (!this.plugin.settings.activeBinaryPath && this.plugin.settings.binaries.length) {
-            this.plugin.settings.activeBinaryPath = this.plugin.settings.binaries[0].path;
-          }
-          await this.plugin.saveSettings();
-          this.display();
-          if (!added) new Notice("No se detectaron binarios nuevos.");
-        })
-      );
-
-    containerEl.createEl("h3", { text: "Preferencias de exportación" });
-
-    new Setting(containerEl)
-      .setName("Motor activo")
-      .setDesc("Binario que se usa por defecto para comprimir.")
-      .addDropdown((d) => {
-        d.addOption("", "— seleccionar —");
-        for (const b of this.plugin.settings.binaries) {
-          if (b.path) d.addOption(b.path, `${b.name || b.path}`);
-        }
-        d.setValue(this.plugin.settings.activeBinaryPath).onChange(async (v) => {
-          this.plugin.settings.activeBinaryPath = v;
-          const kind = engineKindForBinary(v);
-          if (kind) {
-            this.plugin.settings.formatId = ENGINES[kind].formats[0].id;
-            this.plugin.settings.levelId = ENGINES[kind].levels.some((l) => l.id === "5")
-              ? "5"
-              : ENGINES[kind].levels[0].id;
-          }
-          await this.plugin.saveSettings();
-          this.display();
-        });
-      });
-
-    const kind = engineKindForBinary(this.plugin.settings.activeBinaryPath);
     if (kind) {
-      const spec = ENGINES[kind];
-      new Setting(containerEl)
-        .setName("Formato de salida")
-        .setDesc(`Formatos soportados por ${spec.label}.`)
-        .addDropdown((d) => {
-          for (const f of spec.formats) d.addOption(f.id, f.label);
-          d.setValue(spec.formats.some((f) => f.id === this.plugin.settings.formatId) ? this.plugin.settings.formatId : spec.formats[0].id)
-            .onChange(async (v) => {
-              this.plugin.settings.formatId = v;
-              await this.plugin.saveSettings();
-            });
-        });
-
-      new Setting(containerEl)
-        .setName("Nivel de compresión")
-        .addDropdown((d) => {
-          for (const l of spec.levels) d.addOption(l.id, l.label);
-          d.setValue(spec.levels.some((l) => l.id === this.plugin.settings.levelId) ? this.plugin.settings.levelId : spec.levels[0].id)
-            .onChange(async (v) => {
-              this.plugin.settings.levelId = v;
-              await this.plugin.saveSettings();
-            });
-        });
-    } else if (this.plugin.settings.activeBinaryPath) {
-      containerEl.createEl("p", {
-        text: "El binario activo no se reconoce como 7-Zip ni WinRAR.",
-      });
+      for (const f of ENGINES[kind].formats) formatOptions[f.id] = f.label;
+      for (const l of ENGINES[kind].levels) levelOptions[l.id] = l.label;
     }
+
+    const activeDesc = !s.activeBinaryPath
+      ? "Binario que se usa por defecto para comprimir."
+      : kind
+        ? "Binario que se usa por defecto para comprimir."
+        : "El binario activo no se reconoce como 7-Zip ni WinRAR.";
+
+    return [
+      {
+        type: "list",
+        heading: "Motores de compresión",
+        emptyState: "Sin binarios configurados.",
+        addItem: {
+          name: "Agregar binario",
+          action: () => this.editBinary(null),
+        },
+        extraButtons: [
+          (b) =>
+            b.setIcon("lucide-search").setTooltip("Detectar instalados").onClick(() => {
+              void this.detectBinaries();
+            }),
+        ],
+        onDelete: (index) => {
+          void this.removeBinary(index);
+        },
+        items: s.binaries.map((entry) => ({
+          name: entry.name || entry.path || "Binario sin nombre",
+          searchable: false,
+          action: (_el: HTMLElement, index: number) => this.editBinary(index),
+        })),
+      },
+      {
+        type: "group",
+        heading: "Preferencias de exportación",
+        items: [
+          {
+            name: "Motor activo",
+            desc: activeDesc,
+            control: { type: "dropdown", key: "activeBinaryPath", options: activeOptions },
+          },
+          {
+            name: "Formato de salida",
+            desc: kind ? `Formatos soportados por ${ENGINES[kind].label}.` : undefined,
+            visible: kind !== null,
+            control: { type: "dropdown", key: "formatId", options: formatOptions },
+          },
+          {
+            name: "Nivel de compresión",
+            visible: kind !== null,
+            control: { type: "dropdown", key: "levelId", options: levelOptions },
+          },
+        ],
+      },
+    ];
+  }
+
+  override async setControlValue(key: string, value: unknown): Promise<void> {
+    const s = this.plugin.settings;
+    switch (key) {
+      case "activeBinaryPath": {
+        const path = String(value);
+        s.activeBinaryPath = path;
+        const kind = engineKindForBinary(path);
+        if (kind) {
+          s.formatId = ENGINES[kind].formats[0].id;
+          s.levelId = ENGINES[kind].levels.some((l) => l.id === "5")
+            ? "5"
+            : ENGINES[kind].levels[0].id;
+        }
+        break;
+      }
+      case "formatId":
+        s.formatId = String(value);
+        break;
+      case "levelId":
+        s.levelId = String(value);
+        break;
+      default:
+        return;
+    }
+    await this.plugin.saveSettings();
+    this.update();
+  }
+
+  private editBinary(index: number | null): void {
+    const isNew = index === null;
+    const current = isNew
+      ? { name: "", path: "" }
+      : { ...this.plugin.settings.binaries[index] };
+    new BinaryModal(this.app, current, isNew, async (value) => {
+      const s = this.plugin.settings;
+      if (index === null) {
+        s.binaries.push(value);
+      } else {
+        const previous = s.binaries[index];
+        if (s.activeBinaryPath === previous.path) s.activeBinaryPath = value.path;
+        s.binaries[index] = value;
+      }
+      await this.plugin.saveSettings();
+      this.update();
+    }).open();
+  }
+
+  private async removeBinary(index: number): Promise<void> {
+    const [removed] = this.plugin.settings.binaries.splice(index, 1);
+    if (removed && this.plugin.settings.activeBinaryPath === removed.path) {
+      this.plugin.settings.activeBinaryPath = "";
+    }
+    await this.plugin.saveSettings();
+    this.update();
+  }
+
+  private async detectBinaries(): Promise<void> {
+    const s = this.plugin.settings;
+    const found = detectInstalled();
+    let added = 0;
+    for (const f of found) {
+      if (!s.binaries.some((x) => x.path === f.path)) {
+        s.binaries.push(f);
+        added++;
+      }
+    }
+    if (!s.activeBinaryPath && s.binaries.length) {
+      s.activeBinaryPath = s.binaries[0].path;
+    }
+    await this.plugin.saveSettings();
+    this.update();
+    if (!added) new Notice("No se detectaron binarios nuevos.");
   }
 }

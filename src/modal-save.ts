@@ -70,7 +70,7 @@ export class SaveModal extends Modal {
 
     // fallback: abrir la carpeta temporal en el explorador
     try {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires -- electron no se puede empaquetar; se resuelve en runtime
       const { shell } = require("electron") as { shell: { showItemInFolder(p: string): void } };
       shell.showItemInFolder(this.archivePath);
       new Notice(`Archivo temporal en: ${this.archivePath}`);
@@ -85,14 +85,14 @@ export class SaveModal extends Modal {
   /** Devuelve la ruta elegida, null si el SO no ofreció diálogo (fallback), o undefined si el usuario canceló. */
   private async showNativeDialog(): Promise<string | null | undefined> {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires -- electron no se puede empaquetar; se resuelve en runtime
       const electron = require("electron") as {
         remote?: { dialog?: DialogLike };
       };
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires -- @electron/remote es opcional; se intenta cargar en runtime
       const remoteMod = (() => {
         try {
-          // eslint-disable-next-line @typescript-eslint/no-var-requires
+          // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires -- @electron/remote es opcional; se intenta cargar en runtime
           return require("@electron/remote") as { dialog?: DialogLike };
         } catch {
           return undefined;
