@@ -250,21 +250,8 @@ var ProgressModal = class extends import_obsidian.Modal {
   onOpen() {
     this.titleEl.setText("Exportando carpeta");
     this.contentEl.createEl("p", { text: `Comprimiendo \xAB${this.folderName}\xBB\u2026` });
-    const bar = this.contentEl.createDiv();
-    bar.setCssProps({
-      height: "8px",
-      "border-radius": "4px",
-      background: "var(--background-modifier-border)",
-      overflow: "hidden",
-      "margin-bottom": "8px"
-    });
-    this.fillEl = bar.createDiv();
-    this.fillEl.setCssProps({
-      height: "100%",
-      width: "0%",
-      background: "var(--interactive-accent)",
-      transition: "width 0.2s"
-    });
+    const bar = this.contentEl.createDiv({ cls: "ofz-progress-track" });
+    this.fillEl = bar.createDiv({ cls: "ofz-progress-fill" });
     this.pctEl = this.contentEl.createEl("p", { text: "Iniciando\u2026" });
     const buttons = new import_obsidian.Setting(this.contentEl);
     buttons.addButton(

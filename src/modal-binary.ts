@@ -9,7 +9,7 @@ export class BinaryModal extends Modal {
     app: App,
     entry: BinaryEntry,
     private isNew: boolean,
-    private onSave: (entry: BinaryEntry) => void
+    private onSave: (entry: BinaryEntry) => void | Promise<void>
   ) {
     super(app);
     this.nameValue = entry.name;

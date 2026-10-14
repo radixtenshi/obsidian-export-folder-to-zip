@@ -14,21 +14,8 @@ export class ProgressModal extends Modal {
     this.titleEl.setText("Exportando carpeta");
     this.contentEl.createEl("p", { text: `Comprimiendo «${this.folderName}»…` });
 
-    const bar = this.contentEl.createDiv();
-    bar.setCssProps({
-      height: "8px",
-      "border-radius": "4px",
-      background: "var(--background-modifier-border)",
-      overflow: "hidden",
-      "margin-bottom": "8px",
-    });
-    this.fillEl = bar.createDiv();
-    this.fillEl.setCssProps({
-      height: "100%",
-      width: "0%",
-      background: "var(--interactive-accent)",
-      transition: "width 0.2s",
-    });
+    const bar = this.contentEl.createDiv({ cls: "ofz-progress-track" });
+    this.fillEl = bar.createDiv({ cls: "ofz-progress-fill" });
 
     this.pctEl = this.contentEl.createEl("p", { text: "Iniciando…" });
 

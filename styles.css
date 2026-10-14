@@ -1,0 +1,14 @@
+.ofz-progress-track {
+  height: 8px;
+  border-radius: 4px;
+  background: var(--background-modifier-border);
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.ofz-progress-fill {
+  height: 100%;
+  width: 0%;
+  background: var(--interactive-accent);
+  transition: width 0.2s;
+}
