@@ -13,6 +13,7 @@ Desktop **Obsidian** plugin that compresses vault folders using external system 
 - **Flexible save:** on finish, **"Save next to the folder"** (same level, never inside; timestamp suffix if it already exists — never overwrites) or **"Download"** (native OS save dialog).
 - **Settings:** add/edit/remove binaries, search common Windows installs and `PATH`, select the active engine, and choose a format and compression level supported by any configured engine.
 - **Optional 7-Zip download:** on explicit user confirmation, download the matching binary from a pinned `develar/7zip-bin` revision. Windows x64/ia32/arm64, macOS x64/arm64, and Linux x64/ia32/arm/arm64 are supported. The plugin verifies its size and SHA-256 and stores it under its own plugin directory (not in the vault or a temporary folder). An alternative HTTPS URL can be configured with a required SHA-256.
+- **Localized interface:** follows Obsidian's language setting, with English and Castellano translations.
 - **Network and privacy:** no telemetry or vault data is sent. Network access occurs only when the user explicitly starts a binary download: to the pinned GitHub raw URL or to the user-configured HTTPS URL. Downloaded executables run locally with the user's consent.
 
 ## Installation

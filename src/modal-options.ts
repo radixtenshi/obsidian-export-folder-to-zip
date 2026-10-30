@@ -1,4 +1,5 @@
 import { Modal, Notice, Setting } from "obsidian";
+import { t } from "./i18n";
 import type ExportFolderPlugin from "./main";
 
 export interface ExportOptions {
@@ -59,9 +60,9 @@ export class OptionsModal extends Modal {
     const levels = this.levelsByKind[format.kind];
     this.levelId = this.selectedLevelId(format);
 
-    this.titleEl.setText("Exportar carpeta");
-    this.contentEl.createEl("p", { text: `Configurá la exportación de «${this.folderName}». No se creará ningún archivo hasta confirmar.` });
-    new Setting(this.contentEl).setName("Formato de salida").addDropdown((dropdown) => {
+    this.titleEl.setText(t("options.title"));
+    this.contentEl.createEl("p", { text: t("options.intro", { name: this.folderName }) });
+    new Setting(this.contentEl).setName(t("options.format")).addDropdown((dropdown) => {
       for (const item of this.formats) dropdown.addOption(item.id, item.label);
       dropdown.setValue(format.id).onChange((value) => {
         this.formatId = value;
@@ -74,11 +75,11 @@ export class OptionsModal extends Modal {
         this.render();
       });
     });
-    new Setting(this.contentEl).setName("Nivel de compresión").addDropdown((dropdown) => {
+    new Setting(this.contentEl).setName(t("options.level")).addDropdown((dropdown) => {
       for (const item of levels) dropdown.addOption(item.id, item.label);
       dropdown.setValue(this.levelId).onChange((value) => { this.levelId = value; });
     });
-    new Setting(this.contentEl).setName("Definir nombre del archivo").addToggle((toggle) => toggle
+    new Setting(this.contentEl).setName(t("options.customNameToggle")).addToggle((toggle) => toggle
       .setValue(this.customName)
       .onChange((value) => {
         this.customName = value;
@@ -86,34 +87,34 @@ export class OptionsModal extends Modal {
         this.render();
       }));
     if (this.customName) new Setting(this.contentEl)
-      .setName("Nombre del archivo")
-      .setDesc(`Podés escribirlo con o sin extensión; se usará .${format.ext}.`)
+      .setName(t("options.name"))
+      .setDesc(t("options.nameDesc", { ext: format.ext }))
       .addText((text) => text
         .setValue(this.archiveName || `${this.folderName}.${format.ext}`)
         .setPlaceholder(`${this.folderName}.${format.ext}`)
         .onChange((value) => { this.archiveName = value; }));
 
-    const encryption = new Setting(this.contentEl).setName("Cifrar archivo");
-    if (!encryptedFormats) encryption.setDesc("El formato seleccionado no admite cifrado.");
+    const encryption = new Setting(this.contentEl).setName(t("options.encrypt"));
+    if (!encryptedFormats) encryption.setDesc(t("options.encryptUnsupported"));
     encryption.addToggle((toggle) => toggle
       .setDisabled(!encryptedFormats)
       .setValue(this.encrypt && encryptedFormats)
       .onChange((value) => { this.encrypt = value; this.render(); }));
     if (this.encrypt && encryptedFormats) {
-      const passwordSetting = new Setting(this.contentEl).setName("Contraseña");
-      const passwordInput = passwordSetting.controlEl.createEl("input", { type: "password", placeholder: "Ingresá una contraseña" });
+      const passwordSetting = new Setting(this.contentEl).setName(t("options.password"));
+      const passwordInput = passwordSetting.controlEl.createEl("input", { type: "password", placeholder: t("options.passwordPlaceholder") });
       passwordInput.value = this.password;
       passwordInput.addEventListener("input", () => { this.password = passwordInput.value; });
     }
 
-    new Setting(this.contentEl).setName("Destino").addDropdown((dropdown) => dropdown
-      .addOption("next-to-folder", "Guardar junto a la carpeta")
-      .addOption("download", "Descargar (elegir ubicación)")
+    new Setting(this.contentEl).setName(t("options.destination")).addDropdown((dropdown) => dropdown
+      .addOption("next-to-folder", t("options.nextToFolder"))
+      .addOption("download", t("options.download"))
       .setValue(this.destination)
       .onChange((value) => { this.destination = value as "next-to-folder" | "download"; }));
     new Setting(this.contentEl)
-      .addButton((button) => button.setButtonText("Cancelar").onClick(() => this.close()))
-      .addButton((button) => button.setButtonText("Comprimir").setCta().onClick(() => this.confirm()));
+      .addButton((button) => button.setButtonText(t("action.cancel")).onClick(() => this.close()))
+      .addButton((button) => button.setButtonText(t("options.compress")).setCta().onClick(() => this.confirm()));
   }
 
   private canEncrypt(format: FormatOption): boolean {
@@ -137,7 +138,7 @@ export class OptionsModal extends Modal {
     if (!format) return;
     const encryptedFormats = this.canEncrypt(format);
     if (this.encrypt && encryptedFormats && !this.password) {
-      new Notice("Ingresá una contraseña para cifrar el archivo.");
+      new Notice(t("options.passwordRequired"));
       return;
     }
     let rawName = this.customName ? this.archiveName.trim() : `${this.folderName}.${format.ext}`;
@@ -145,7 +146,7 @@ export class OptionsModal extends Modal {
     if (rawName.toLowerCase().endsWith(selectedExtension.toLowerCase())) rawName = rawName.slice(0, -selectedExtension.length);
     const safeName = rawName.replace(/[\\/:*?"<>|]/g, "_").replace(/\.+$/, "");
     if (!safeName || safeName === "." || safeName === "..") {
-      new Notice("Ingresá un nombre de archivo válido.");
+      new Notice(t("options.invalidName"));
       return;
     }
     const archiveName = `${safeName}.${format.ext}`;

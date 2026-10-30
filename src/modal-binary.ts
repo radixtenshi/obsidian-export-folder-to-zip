@@ -1,4 +1,5 @@
 import { App, Modal, Notice, Setting } from "obsidian";
+import { t } from "./i18n";
 import type { BinaryEntry } from "./settings";
 
 export class BinaryModal extends Modal {
@@ -17,31 +18,31 @@ export class BinaryModal extends Modal {
   }
 
   onOpen() {
-    this.titleEl.setText(this.isNew ? "Agregar binario" : "Editar binario");
+    this.titleEl.setText(t(this.isNew ? "binary.addTitle" : "binary.editTitle"));
 
     new Setting(this.contentEl)
-      .setName("Nombre")
-      .setDesc("Etiqueta para identificar el motor.")
-      .addText((t) =>
-        t.setValue(this.nameValue).setPlaceholder("7-Zip").onChange((v) => {
+      .setName(t("binary.name"))
+      .setDesc(t("binary.nameDesc"))
+      .addText((text) =>
+        text.setValue(this.nameValue).setPlaceholder("7-Zip").onChange((v) => {
           this.nameValue = v;
         })
       );
 
     new Setting(this.contentEl)
-      .setName("Ruta del ejecutable")
-      .setDesc("Ruta completa de 7z.exe, WinRAR.exe o Rar.exe.")
-      .addText((t) =>
-        t.setValue(this.pathValue).setPlaceholder("C:\\Program Files\\7-Zip\\7z.exe").onChange((v) => {
+      .setName(t("binary.path"))
+      .setDesc(t("binary.pathDesc"))
+      .addText((text) =>
+        text.setValue(this.pathValue).setPlaceholder("C:\\Program Files\\7-Zip\\7z.exe").onChange((v) => {
           this.pathValue = v.trim();
         })
       );
 
     const buttons = new Setting(this.contentEl);
     buttons.addButton((b) =>
-      b.setButtonText("Guardar").setCta().onClick(() => {
+      b.setButtonText(t("action.save")).setCta().onClick(() => {
         if (!this.pathValue) {
-          new Notice("Indicá la ruta del ejecutable.");
+          new Notice(t("binary.pathRequired"));
           return;
         }
         this.onSave({ name: this.nameValue.trim(), path: this.pathValue });
@@ -49,7 +50,7 @@ export class BinaryModal extends Modal {
       })
     );
     buttons.addButton((b) =>
-      b.setButtonText("Cancelar").onClick(() => {
+      b.setButtonText(t("action.cancel")).onClick(() => {
         this.close();
       })
     );

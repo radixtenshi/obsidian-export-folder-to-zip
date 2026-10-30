@@ -27,7 +27,7 @@ __export(main_exports, {
   default: () => ExportFolderPlugin
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian7 = require("obsidian");
+var import_obsidian8 = require("obsidian");
 var import_fs5 = require("fs");
 var import_path5 = require("path");
 
@@ -40,35 +40,297 @@ var import_path2 = require("path");
 // src/engines.ts
 var import_fs = require("fs");
 var import_path = require("path");
+
+// src/i18n.ts
+var import_obsidian = require("obsidian");
+var en = {
+  "action.cancel": "Cancel",
+  "action.save": "Save",
+  "menu.exportFolder": "Export folder\u2026",
+  "error.localVaultRequired": "A local Obsidian Desktop vault is required.",
+  "error.downloadedMissing": "The downloaded executable does not exist.",
+  "error.exportInProgress": "An export is already in progress.",
+  "error.binaryNotConfigured": "Configure a compression engine in Settings \u2192 Export Folder to ZIP.",
+  "error.unknownBinary": "The active binary is not recognized as 7-Zip or WinRAR.",
+  "error.noEngineForFormat": "No configured engine supports that format.",
+  "binary.addTitle": "Add binary",
+  "binary.editTitle": "Edit binary",
+  "binary.name": "Name",
+  "binary.nameDesc": "Label used to identify the engine.",
+  "binary.path": "Executable path",
+  "binary.pathDesc": "Full path to 7z.exe, WinRAR.exe, or Rar.exe.",
+  "binary.pathRequired": "Enter the executable path.",
+  "status.compressing": "\u{1F4E6} Compressing {name}\u2026",
+  "status.title": "Export Folder to ZIP \u2014 click to view progress",
+  "notice.compressionDone": "Compression of \u201C{name}\u201D finished.",
+  "error.compressionFailed": "Compression failed: {message}",
+  "progress.title": "Exporting folder",
+  "progress.compressing": "Compressing \u201C{name}\u201D\u2026",
+  "progress.starting": "Starting\u2026",
+  "progress.engineStarted": "Engine started; waiting for progress\u2026",
+  "progress.background": "Send to background",
+  "save.title": "Compression finished",
+  "save.savedAt": "Saved to: {path}",
+  "save.failed": "Could not save: {message}",
+  "save.noDialog": "No save dialog is available; the temporary file was deleted.",
+  "options.title": "Export folder",
+  "options.intro": "Configure the export of \u201C{name}\u201D. No file is created until you confirm.",
+  "options.format": "Output format",
+  "options.level": "Compression level",
+  "options.customNameToggle": "Set file name",
+  "options.name": "File name",
+  "options.nameDesc": "You can include the extension or omit it; .{ext} will be used.",
+  "options.encrypt": "Encrypt archive",
+  "options.encryptUnsupported": "The selected format does not support encryption.",
+  "options.password": "Password",
+  "options.passwordPlaceholder": "Enter a password",
+  "options.destination": "Destination",
+  "options.nextToFolder": "Save next to the folder",
+  "options.download": "Download (choose location)",
+  "options.compress": "Compress",
+  "options.passwordRequired": "Enter a password to encrypt the archive.",
+  "options.invalidName": "Enter a valid file name.",
+  "settings.selectNone": "\u2014 select \u2014",
+  "settings.activeDesc": "Binary used for compression by default.",
+  "settings.activeDescUnknown": "The active binary is not recognized as 7-Zip or WinRAR.",
+  "settings.enginesHeading": "Compression engines",
+  "settings.empty": "No binaries configured.",
+  "settings.addBinary": "Add binary",
+  "settings.unnamedBinary": "Unnamed binary",
+  "settings.installHeading": "Install a compression engine",
+  "settings.detectName": "Find local installations",
+  "settings.detectDesc": "Searches for 7-Zip and WinRAR in common locations and on PATH.",
+  "settings.detectButton": "Search now",
+  "settings.downloadName": "Download 7-Zip",
+  "settings.downloadDesc": "Installs 7-Zip for this plugin to use as its compression engine.",
+  "settings.downloadButton": "Download 7-Zip\u2026",
+  "settings.customUrlName": "Direct URL for an alternative binary",
+  "settings.customUrlDesc": "Optional. Paste a direct HTTPS link to an executable compatible with this system, and provide its SHA-256.",
+  "settings.customUrlPlaceholder": "https://\u2026/7za.exe",
+  "settings.customHashName": "SHA-256 of the alternative binary",
+  "settings.customHashDesc": "Required when an alternative URL is configured; the file is rejected if it does not match.",
+  "settings.customHashPlaceholder": "64 hexadecimal characters",
+  "settings.exportHeading": "Export preferences",
+  "settings.activeEngine": "Active engine",
+  "settings.format": "Output format",
+  "settings.formatDesc": "Formats supported by {engine}.",
+  "settings.level": "Compression level",
+  "settings.detected": "Detection finished: {count} engine(s), active: {name}.",
+  "settings.notDetected": "No 7-Zip or WinRAR installation was found in common locations or on PATH.",
+  "download.title": "Download 7-Zip",
+  "download.system": "System detected by Obsidian: {platform} / {arch}.",
+  "download.sourceLabel": "Binary source:",
+  "download.pinnedRevision": "Download pinned to revision {commit} of the repository.",
+  "download.warning": "Warning: you are about to download and run a third-party binary at your own risk. It will be stored inside this plugin's folder, not in the vault or temporary files. The plugin verifies its size and SHA-256 before use.",
+  "download.accept": "I accept and download",
+  "download.invalidCustom": "Configure a direct HTTPS URL and a valid SHA-256 (64 hexadecimal characters).",
+  "download.unsupported": "This platform and architecture combination is not published by 7zip-bin.",
+  "download.titleProgress": "Downloading 7-Zip",
+  "download.connecting": "Connecting to GitHub\u2026",
+  "download.progressPercent": "Downloading\u2026 {percent}%",
+  "download.progressKb": "Downloading\u2026 {kb} KB",
+  "download.installed": "7-Zip was installed and configured as the compression engine.",
+  "download.failed": "Could not download 7-Zip: {message}",
+  "download.errorCustomUrl": "The alternative URL must use HTTPS and requires a valid 64-character SHA-256.",
+  "download.errorUnsupported": "7zip-bin does not provide a binary compatible with this platform and architecture.",
+  "download.errorRedirects": "The download exceeded the redirect limit.",
+  "download.errorRedirectHttps": "A redirect that does not use HTTPS was rejected.",
+  "download.errorHttp": "The server responded with HTTP {status}.",
+  "download.errorTooLarge": "The downloaded file exceeds the expected size.",
+  "download.errorSize": "Unexpected size ({bytes} bytes).",
+  "download.errorHash": "The SHA-256 checksum does not match; the downloaded binary was rejected.",
+  "download.errorNoOfficial": "No official binary is available for this platform.",
+  "engine.detected7zip": "7-Zip (7z.exe)",
+  "engine.detectedWinrarConsole": "WinRAR (Rar.exe)",
+  "engine.detectedWinrar": "WinRAR (WinRAR.exe)",
+  "engine.detected7zipUser": "7-Zip (user)",
+  "engine.detected7zipPath": "7-Zip (PATH)",
+  "engine.detectedWinrarPath": "WinRAR (PATH)",
+  "engine.downloaded7zip": "7-Zip (downloaded from develar/7zip-bin)",
+  "format.zip": "ZIP (.zip)",
+  "format.7z": "7z (.7z)",
+  "format.rar": "RAR (.rar)",
+  "format.tar": "TAR (.tar)",
+  "format.tgz": "tar.gz (.tar.gz)",
+  "level.store": "Store (no compression)",
+  "level.fast": "Fast",
+  "level.veryFast": "Very fast",
+  "level.normal": "Normal",
+  "level.max": "Maximum",
+  "error.tempDir": "Could not prepare the temporary directory: {message}",
+  "error.processCode": "The process exited with code {code}.",
+  "error.noOutput": "The engine did not create the output file.",
+  "error.spawnEngine": "Could not start the compression engine ({path}): {message}",
+  "error.spawnBinary": "Could not start \u201C{path}\u201D: {message}"
+};
+var es = {
+  "action.cancel": "Cancelar",
+  "action.save": "Guardar",
+  "menu.exportFolder": "Exportar carpeta\u2026",
+  "error.localVaultRequired": "Se requiere un vault local de Obsidian Desktop.",
+  "error.downloadedMissing": "El ejecutable descargado no existe.",
+  "error.exportInProgress": "Ya hay una exportaci\xF3n en curso.",
+  "error.binaryNotConfigured": "Configur\xE1 un motor de compresi\xF3n en Ajustes \u2192 Export Folder to ZIP.",
+  "error.unknownBinary": "El binario activo no se reconoce como 7-Zip ni WinRAR.",
+  "error.noEngineForFormat": "No hay un motor configurado que admita ese formato.",
+  "binary.addTitle": "Agregar binario",
+  "binary.editTitle": "Editar binario",
+  "binary.name": "Nombre",
+  "binary.nameDesc": "Etiqueta para identificar el motor.",
+  "binary.path": "Ruta del ejecutable",
+  "binary.pathDesc": "Ruta completa de 7z.exe, WinRAR.exe o Rar.exe.",
+  "binary.pathRequired": "Indic\xE1 la ruta del ejecutable.",
+  "status.compressing": "\u{1F4E6} Comprimiendo {name}\u2026",
+  "status.title": "Export Folder to ZIP \u2014 clic para ver el progreso",
+  "notice.compressionDone": "Compresi\xF3n de \xAB{name}\xBB finalizada.",
+  "error.compressionFailed": "Error al comprimir: {message}",
+  "progress.title": "Exportando carpeta",
+  "progress.compressing": "Comprimiendo \xAB{name}\xBB\u2026",
+  "progress.starting": "Iniciando\u2026",
+  "progress.engineStarted": "Motor iniciado; esperando progreso\u2026",
+  "progress.background": "Enviar a segundo plano",
+  "save.title": "Compresi\xF3n finalizada",
+  "save.savedAt": "Guardado en: {path}",
+  "save.failed": "No se pudo guardar: {message}",
+  "save.noDialog": "No hay di\xE1logo de guardado disponible; se elimin\xF3 el archivo temporal.",
+  "options.title": "Exportar carpeta",
+  "options.intro": "Configur\xE1 la exportaci\xF3n de \xAB{name}\xBB. No se crear\xE1 ning\xFAn archivo hasta confirmar.",
+  "options.format": "Formato de salida",
+  "options.level": "Nivel de compresi\xF3n",
+  "options.customNameToggle": "Definir nombre del archivo",
+  "options.name": "Nombre del archivo",
+  "options.nameDesc": "Pod\xE9s escribirlo con o sin extensi\xF3n; se usar\xE1 .{ext}.",
+  "options.encrypt": "Cifrar archivo",
+  "options.encryptUnsupported": "El formato seleccionado no admite cifrado.",
+  "options.password": "Contrase\xF1a",
+  "options.passwordPlaceholder": "Ingres\xE1 una contrase\xF1a",
+  "options.destination": "Destino",
+  "options.nextToFolder": "Guardar junto a la carpeta",
+  "options.download": "Descargar (elegir ubicaci\xF3n)",
+  "options.compress": "Comprimir",
+  "options.passwordRequired": "Ingres\xE1 una contrase\xF1a para cifrar el archivo.",
+  "options.invalidName": "Ingres\xE1 un nombre de archivo v\xE1lido.",
+  "settings.selectNone": "\u2014 seleccionar \u2014",
+  "settings.activeDesc": "Binario que se usa por defecto para comprimir.",
+  "settings.activeDescUnknown": "El binario activo no se reconoce como 7-Zip ni WinRAR.",
+  "settings.enginesHeading": "Motores de compresi\xF3n",
+  "settings.empty": "Sin binarios configurados.",
+  "settings.addBinary": "Agregar binario",
+  "settings.unnamedBinary": "Binario sin nombre",
+  "settings.installHeading": "Instalar un motor de compresi\xF3n",
+  "settings.detectName": "Buscar instalaciones locales",
+  "settings.detectDesc": "Busca 7-Zip y WinRAR instalados en ubicaciones habituales y en PATH.",
+  "settings.detectButton": "Buscar ahora",
+  "settings.downloadName": "Descargar 7-Zip",
+  "settings.downloadDesc": "Instala 7-Zip para usarlo como motor de compresi\xF3n de este plugin.",
+  "settings.downloadButton": "Descargar 7-Zip\u2026",
+  "settings.customUrlName": "URL directa de un binario alternativo",
+  "settings.customUrlDesc": "Opcional. Peg\xE1 un enlace HTTPS directo al ejecutable compatible con este sistema; complet\xE1 tambi\xE9n su SHA-256.",
+  "settings.customUrlPlaceholder": "https://\u2026/7za.exe",
+  "settings.customHashName": "SHA-256 del binario alternativo",
+  "settings.customHashDesc": "Obligatorio cuando se configura una URL alternativa; el archivo se rechaza si no coincide.",
+  "settings.customHashPlaceholder": "64 caracteres hexadecimales",
+  "settings.exportHeading": "Preferencias de exportaci\xF3n",
+  "settings.activeEngine": "Motor activo",
+  "settings.format": "Formato de salida",
+  "settings.formatDesc": "Formatos soportados por {engine}.",
+  "settings.level": "Nivel de compresi\xF3n",
+  "settings.detected": "Detecci\xF3n finalizada: {count} motor(es), activo: {name}.",
+  "settings.notDetected": "No se encontraron 7-Zip ni WinRAR en las ubicaciones habituales ni en PATH.",
+  "download.title": "Descargar 7-Zip",
+  "download.system": "Sistema detectado por Obsidian: {platform} / {arch}.",
+  "download.sourceLabel": "Origen del binario:",
+  "download.pinnedRevision": "Descarga fijada a la revisi\xF3n {commit} del repositorio.",
+  "download.warning": "Advertencia: aceptar\xE1s descargar y ejecutar un binario de terceros bajo tu propio riesgo. Se guardar\xE1 dentro de la carpeta de este plugin, no en el vault ni en temporales. El plugin verificar\xE1 su tama\xF1o y SHA-256 antes de usarlo.",
+  "download.accept": "Acepto y descargar",
+  "download.invalidCustom": "Configur\xE1 una URL HTTPS directa y un SHA-256 v\xE1lido (64 caracteres hexadecimales).",
+  "download.unsupported": "Esta combinaci\xF3n de plataforma y arquitectura no est\xE1 publicada por 7zip-bin.",
+  "download.titleProgress": "Descargando 7-Zip",
+  "download.connecting": "Conectando con GitHub\u2026",
+  "download.progressPercent": "Descargando\u2026 {percent}%",
+  "download.progressKb": "Descargando\u2026 {kb} KB",
+  "download.installed": "7-Zip qued\xF3 instalado y configurado como motor de compresi\xF3n.",
+  "download.failed": "No se pudo descargar 7-Zip: {message}",
+  "download.errorCustomUrl": "La URL alternativa debe ser HTTPS y requiere un SHA-256 v\xE1lido de 64 caracteres.",
+  "download.errorUnsupported": "7zip-bin no ofrece un binario compatible con esta plataforma y arquitectura.",
+  "download.errorRedirects": "La descarga excedi\xF3 el l\xEDmite de redirecciones.",
+  "download.errorRedirectHttps": "Se rechaz\xF3 una redirecci\xF3n que no usa HTTPS.",
+  "download.errorHttp": "El servidor respondi\xF3 HTTP {status}.",
+  "download.errorTooLarge": "El archivo descargado supera el tama\xF1o esperado.",
+  "download.errorSize": "Tama\xF1o inesperado ({bytes} bytes).",
+  "download.errorHash": "La suma SHA-256 no coincide; se rechaz\xF3 el binario descargado.",
+  "download.errorNoOfficial": "No hay un binario oficial para esta plataforma.",
+  "engine.detected7zip": "7-Zip (7z.exe)",
+  "engine.detectedWinrarConsole": "WinRAR (Rar.exe)",
+  "engine.detectedWinrar": "WinRAR (WinRAR.exe)",
+  "engine.detected7zipUser": "7-Zip (usuario)",
+  "engine.detected7zipPath": "7-Zip (PATH)",
+  "engine.detectedWinrarPath": "WinRAR (PATH)",
+  "engine.downloaded7zip": "7-Zip (descargado desde develar/7zip-bin)",
+  "format.zip": "ZIP (.zip)",
+  "format.7z": "7z (.7z)",
+  "format.rar": "RAR (.rar)",
+  "format.tar": "TAR (.tar)",
+  "format.tgz": "tar.gz (.tar.gz)",
+  "level.store": "Almacenar (sin comprimir)",
+  "level.fast": "R\xE1pido",
+  "level.veryFast": "Muy r\xE1pido",
+  "level.normal": "Normal",
+  "level.max": "M\xE1ximo",
+  "error.tempDir": "No se pudo preparar el directorio temporal: {message}",
+  "error.processCode": "El proceso termin\xF3 con c\xF3digo {code}.",
+  "error.noOutput": "El motor no gener\xF3 el archivo de salida.",
+  "error.spawnEngine": "No se pudo iniciar el motor de compresi\xF3n ({path}): {message}",
+  "error.spawnBinary": "No se pudo iniciar \xAB{path}\xBB: {message}"
+};
+var messages = { en, es };
+var language = "en";
+try {
+  language = (0, import_obsidian.getLanguage)().toLowerCase().startsWith("es") ? "es" : "en";
+} catch (e) {
+  language = "en";
+}
+function t(key, vars) {
+  var _a, _b;
+  const template = (_b = (_a = messages[language][key]) != null ? _a : messages.en[key]) != null ? _b : key;
+  if (!vars)
+    return template;
+  return template.replace(/\{(\w+)\}/g, (match, name) => {
+    const value = vars[name];
+    return value === void 0 ? match : String(value);
+  });
+}
+
+// src/engines.ts
 var ENGINES = {
   "7zip": {
     kind: "7zip",
     label: "7-Zip",
     formats: [
-      { id: "zip", label: "ZIP (.zip)", ext: "zip" },
-      { id: "7z", label: "7z (.7z)", ext: "7z" },
-      { id: "tar", label: "TAR (.tar)", ext: "tar" },
-      { id: "tgz", label: "tar.gz (.tar.gz)", ext: "tar.gz" }
+      { id: "zip", label: "format.zip", ext: "zip" },
+      { id: "7z", label: "format.7z", ext: "7z" },
+      { id: "tar", label: "format.tar", ext: "tar" },
+      { id: "tgz", label: "format.tgz", ext: "tar.gz" }
     ],
     levels: [
-      { id: "0", label: "Almacenar (sin comprimir)" },
-      { id: "3", label: "R\xE1pido" },
-      { id: "5", label: "Normal" },
-      { id: "9", label: "M\xE1ximo" }
+      { id: "0", label: "level.store" },
+      { id: "3", label: "level.fast" },
+      { id: "5", label: "level.normal" },
+      { id: "9", label: "level.max" }
     ]
   },
   winrar: {
     kind: "winrar",
     label: "WinRAR",
     formats: [
-      { id: "rar", label: "RAR (.rar)", ext: "rar" },
-      { id: "zip", label: "ZIP (.zip)", ext: "zip" }
+      { id: "rar", label: "format.rar", ext: "rar" },
+      { id: "zip", label: "format.zip", ext: "zip" }
     ],
     levels: [
-      { id: "0", label: "Almacenar" },
-      { id: "1", label: "Muy r\xE1pido" },
-      { id: "3", label: "Normal" },
-      { id: "5", label: "M\xE1ximo" }
+      { id: "0", label: "level.store" },
+      { id: "1", label: "level.veryFast" },
+      { id: "3", label: "level.normal" },
+      { id: "5", label: "level.max" }
     ]
   }
 };
@@ -116,16 +378,16 @@ function detectInstalled() {
   };
   const programRoots = [process.env.ProgramFiles, process.env["ProgramFiles(x86)"], process.env.LOCALAPPDATA].filter((root) => Boolean(root));
   for (const root of programRoots) {
-    add((0, import_path.join)(root, "7-Zip", "7z.exe"), "7-Zip (7z.exe)");
-    add((0, import_path.join)(root, "WinRAR", "Rar.exe"), "WinRAR (Rar.exe)");
-    add((0, import_path.join)(root, "WinRAR", "WinRAR.exe"), "WinRAR (WinRAR.exe)");
+    add((0, import_path.join)(root, "7-Zip", "7z.exe"), t("engine.detected7zip"));
+    add((0, import_path.join)(root, "WinRAR", "Rar.exe"), t("engine.detectedWinrarConsole"));
+    add((0, import_path.join)(root, "WinRAR", "WinRAR.exe"), t("engine.detectedWinrar"));
   }
   if (process.env.LOCALAPPDATA)
-    add((0, import_path.join)(process.env.LOCALAPPDATA, "Programs", "7-Zip", "7z.exe"), "7-Zip (usuario)");
+    add((0, import_path.join)(process.env.LOCALAPPDATA, "Programs", "7-Zip", "7z.exe"), t("engine.detected7zipUser"));
   for (const executable of ["7z.exe", "rar.exe", "WinRAR.exe"]) {
     const foundInPath = findOnPath(executable);
     if (foundInPath)
-      add(foundInPath, `${engineKindForBinary(executable) === "winrar" ? "WinRAR" : "7-Zip"} (PATH)`);
+      add(foundInPath, t(engineKindForBinary(executable) === "winrar" ? "engine.detectedWinrarPath" : "engine.detected7zipPath"));
   }
   for (const [path, name] of candidates)
     found.push({ name, path });
@@ -195,7 +457,7 @@ var CompressionJob = class {
       (0, import_fs2.mkdirSync)(this.tempDir, { recursive: true });
       this.cb.onProgress(null);
     } catch (error) {
-      this.fail(`No se pudo preparar el directorio temporal: ${error instanceof Error ? error.message : String(error)}`);
+      this.fail(t("error.tempDir", { message: error instanceof Error ? error.message : String(error) }));
       return;
     }
     if (this.formatId === "tgz") {
@@ -204,12 +466,12 @@ var CompressionJob = class {
         if (this.cancelled)
           return;
         if (code !== 0)
-          return this.fail(stderr || `El proceso termin\xF3 con c\xF3digo ${code}`);
+          return this.fail(stderr || t("error.processCode", { code: code != null ? code : "?" }));
         this.spawnOnce(["a", "-tgzip", "-y", this.archivePath, (0, import_path2.basename)(this.tarPath)], (code2, stderr2) => {
           if (this.cancelled)
             return;
           if (code2 !== 0)
-            return this.fail(stderr2 || `El proceso termin\xF3 con c\xF3digo ${code2}`);
+            return this.fail(stderr2 || t("error.processCode", { code: code2 != null ? code2 : "?" }));
           try {
             (0, import_fs2.unlinkSync)(this.tarPath);
           } catch (e) {
@@ -223,9 +485,9 @@ var CompressionJob = class {
         if (this.cancelled)
           return;
         if (code !== 0)
-          return this.fail(stderr || `El proceso termin\xF3 con c\xF3digo ${code}`);
+          return this.fail(stderr || t("error.processCode", { code: code != null ? code : "?" }));
         if (!(0, import_fs2.existsSync)(this.archivePath))
-          return this.fail("El motor no gener\xF3 el archivo de salida.");
+          return this.fail(t("error.noOutput"));
         this.cb.onDone(this.archivePath);
       });
     }
@@ -251,12 +513,12 @@ var CompressionJob = class {
     let stderr = "";
     const onSpawnError = (error) => {
       this.child = null;
-      this.fail(`No se pudo iniciar el motor de compresi\xF3n (${this.binaryPath}): ${error.message}`);
+      this.fail(t("error.spawnEngine", { path: this.binaryPath, message: error.message }));
     };
     try {
       this.child = (0, import_child_process.spawn)(this.binaryPath, args, { cwd: this.parentDir, windowsHide: true, stdio: ["ignore", "pipe", "pipe"] });
     } catch (error) {
-      this.fail(`No se pudo iniciar \xAB${this.binaryPath}\xBB: ${error instanceof Error ? error.message : String(error)}`);
+      this.fail(t("error.spawnBinary", { path: this.binaryPath, message: error instanceof Error ? error.message : String(error) }));
       return;
     }
     this.child.on("error", onSpawnError);
@@ -311,8 +573,8 @@ function formatBytes(bytes) {
 }
 
 // src/modal-progress.ts
-var import_obsidian = require("obsidian");
-var ProgressModal = class extends import_obsidian.Modal {
+var import_obsidian2 = require("obsidian");
+var ProgressModal = class extends import_obsidian2.Modal {
   constructor(plugin, folderName) {
     super(plugin.app);
     this.plugin = plugin;
@@ -320,27 +582,27 @@ var ProgressModal = class extends import_obsidian.Modal {
     this.plugin.progressModal = this;
   }
   onOpen() {
-    this.titleEl.setText("Exportando carpeta");
-    this.contentEl.createEl("p", { text: `Comprimiendo \xAB${this.folderName}\xBB\u2026` });
+    this.titleEl.setText(t("progress.title"));
+    this.contentEl.createEl("p", { text: t("progress.compressing", { name: this.folderName }) });
     const bar = this.contentEl.createDiv({ cls: "ofz-progress-track" });
     this.fillEl = bar.createDiv({ cls: "ofz-progress-fill" });
-    this.pctEl = this.contentEl.createEl("p", { text: "Iniciando\u2026" });
-    const buttons = new import_obsidian.Setting(this.contentEl);
+    this.pctEl = this.contentEl.createEl("p", { text: t("progress.starting") });
+    const buttons = new import_obsidian2.Setting(this.contentEl);
     buttons.addButton(
-      (b) => b.setButtonText("Cancelar").setDestructive().onClick(() => {
+      (b) => b.setButtonText(t("action.cancel")).setDestructive().onClick(() => {
         this.plugin.cancelJob();
         this.close();
       })
     );
     buttons.addButton(
-      (b) => b.setButtonText("Enviar a segundo plano").onClick(() => {
+      (b) => b.setButtonText(t("progress.background")).onClick(() => {
         this.close();
       })
     );
   }
   update(percent) {
     if (percent === null) {
-      this.pctEl.setText("Motor iniciado; esperando progreso\u2026");
+      this.pctEl.setText(t("progress.engineStarted"));
       return;
     }
     this.pctEl.setText(`${percent}%`);
@@ -354,10 +616,10 @@ var ProgressModal = class extends import_obsidian.Modal {
 };
 
 // src/modal-save.ts
-var import_obsidian2 = require("obsidian");
+var import_obsidian3 = require("obsidian");
 var import_fs3 = require("fs");
 var import_path3 = require("path");
-var SaveModal = class extends import_obsidian2.Modal {
+var SaveModal = class extends import_obsidian3.Modal {
   constructor(plugin, archivePath, folderName, parentDir, baseName, ext, destination, archiveName) {
     super(plugin.app);
     this.plugin = plugin;
@@ -377,7 +639,7 @@ var SaveModal = class extends import_obsidian2.Modal {
       sizeLabel = ` \u2014 ${formatBytes((0, import_fs3.statSync)(this.archivePath).size)}`;
     } catch (e) {
     }
-    this.titleEl.setText("Compresi\xF3n finalizada");
+    this.titleEl.setText(t("save.title"));
     this.contentEl.createEl("p", { text: `\xAB${fileName}\xBB${sizeLabel}` });
     if (this.destination === "next-to-folder")
       this.saveNextTo();
@@ -389,9 +651,9 @@ var SaveModal = class extends import_obsidian2.Modal {
     try {
       moveArchive(this.archivePath, dest);
       this.done = true;
-      new import_obsidian2.Notice(`Guardado en: ${dest}`);
+      new import_obsidian3.Notice(t("save.savedAt", { path: dest }));
     } catch (e) {
-      new import_obsidian2.Notice(`No se pudo guardar: ${e instanceof Error ? e.message : e}`);
+      new import_obsidian3.Notice(t("save.failed", { message: e instanceof Error ? e.message : String(e) }));
       return;
     }
     this.plugin.finalizeJob();
@@ -403,10 +665,10 @@ var SaveModal = class extends import_obsidian2.Modal {
       try {
         moveArchive(this.archivePath, savePath);
         this.done = true;
-        new import_obsidian2.Notice(`Guardado en: ${savePath}`);
+        new import_obsidian3.Notice(t("save.savedAt", { path: savePath }));
         this.plugin.finalizeJob();
       } catch (e) {
-        new import_obsidian2.Notice(`No se pudo guardar: ${e instanceof Error ? e.message : e}`);
+        new import_obsidian3.Notice(t("save.failed", { message: e instanceof Error ? e.message : String(e) }));
       }
       this.close();
       return;
@@ -416,7 +678,7 @@ var SaveModal = class extends import_obsidian2.Modal {
       return;
     }
     this.plugin.finalizeJob();
-    new import_obsidian2.Notice("No hay di\xE1logo de guardado disponible; se elimin\xF3 el archivo temporal.");
+    new import_obsidian3.Notice(t("save.noDialog"));
     this.close();
   }
   /** Devuelve la ruta elegida; null si no hay diálogo; undefined si se canceló. */
@@ -454,8 +716,8 @@ var SaveModal = class extends import_obsidian2.Modal {
 };
 
 // src/modal-options.ts
-var import_obsidian3 = require("obsidian");
-var OptionsModal = class extends import_obsidian3.Modal {
+var import_obsidian4 = require("obsidian");
+var OptionsModal = class extends import_obsidian4.Modal {
   constructor(plugin, folderName, formats, levelsByKind, initialFormatId, initialLevelId, initialDestination, onConfirm) {
     super(plugin.app);
     this.plugin = plugin;
@@ -482,9 +744,9 @@ var OptionsModal = class extends import_obsidian3.Modal {
     const encryptedFormats = this.canEncrypt(format);
     const levels = this.levelsByKind[format.kind];
     this.levelId = this.selectedLevelId(format);
-    this.titleEl.setText("Exportar carpeta");
-    this.contentEl.createEl("p", { text: `Configur\xE1 la exportaci\xF3n de \xAB${this.folderName}\xBB. No se crear\xE1 ning\xFAn archivo hasta confirmar.` });
-    new import_obsidian3.Setting(this.contentEl).setName("Formato de salida").addDropdown((dropdown) => {
+    this.titleEl.setText(t("options.title"));
+    this.contentEl.createEl("p", { text: t("options.intro", { name: this.folderName }) });
+    new import_obsidian4.Setting(this.contentEl).setName(t("options.format")).addDropdown((dropdown) => {
       for (const item of this.formats)
         dropdown.addOption(item.id, item.label);
       dropdown.setValue(format.id).onChange((value) => {
@@ -499,42 +761,42 @@ var OptionsModal = class extends import_obsidian3.Modal {
         this.render();
       });
     });
-    new import_obsidian3.Setting(this.contentEl).setName("Nivel de compresi\xF3n").addDropdown((dropdown) => {
+    new import_obsidian4.Setting(this.contentEl).setName(t("options.level")).addDropdown((dropdown) => {
       for (const item of levels)
         dropdown.addOption(item.id, item.label);
       dropdown.setValue(this.levelId).onChange((value) => {
         this.levelId = value;
       });
     });
-    new import_obsidian3.Setting(this.contentEl).setName("Definir nombre del archivo").addToggle((toggle) => toggle.setValue(this.customName).onChange((value) => {
+    new import_obsidian4.Setting(this.contentEl).setName(t("options.customNameToggle")).addToggle((toggle) => toggle.setValue(this.customName).onChange((value) => {
       this.customName = value;
       if (value && !this.archiveName)
         this.archiveName = `${this.folderName}.${format.ext}`;
       this.render();
     }));
     if (this.customName)
-      new import_obsidian3.Setting(this.contentEl).setName("Nombre del archivo").setDesc(`Pod\xE9s escribirlo con o sin extensi\xF3n; se usar\xE1 .${format.ext}.`).addText((text) => text.setValue(this.archiveName || `${this.folderName}.${format.ext}`).setPlaceholder(`${this.folderName}.${format.ext}`).onChange((value) => {
+      new import_obsidian4.Setting(this.contentEl).setName(t("options.name")).setDesc(t("options.nameDesc", { ext: format.ext })).addText((text) => text.setValue(this.archiveName || `${this.folderName}.${format.ext}`).setPlaceholder(`${this.folderName}.${format.ext}`).onChange((value) => {
         this.archiveName = value;
       }));
-    const encryption = new import_obsidian3.Setting(this.contentEl).setName("Cifrar archivo");
+    const encryption = new import_obsidian4.Setting(this.contentEl).setName(t("options.encrypt"));
     if (!encryptedFormats)
-      encryption.setDesc("El formato seleccionado no admite cifrado.");
+      encryption.setDesc(t("options.encryptUnsupported"));
     encryption.addToggle((toggle) => toggle.setDisabled(!encryptedFormats).setValue(this.encrypt && encryptedFormats).onChange((value) => {
       this.encrypt = value;
       this.render();
     }));
     if (this.encrypt && encryptedFormats) {
-      const passwordSetting = new import_obsidian3.Setting(this.contentEl).setName("Contrase\xF1a");
-      const passwordInput = passwordSetting.controlEl.createEl("input", { type: "password", placeholder: "Ingres\xE1 una contrase\xF1a" });
+      const passwordSetting = new import_obsidian4.Setting(this.contentEl).setName(t("options.password"));
+      const passwordInput = passwordSetting.controlEl.createEl("input", { type: "password", placeholder: t("options.passwordPlaceholder") });
       passwordInput.value = this.password;
       passwordInput.addEventListener("input", () => {
         this.password = passwordInput.value;
       });
     }
-    new import_obsidian3.Setting(this.contentEl).setName("Destino").addDropdown((dropdown) => dropdown.addOption("next-to-folder", "Guardar junto a la carpeta").addOption("download", "Descargar (elegir ubicaci\xF3n)").setValue(this.destination).onChange((value) => {
+    new import_obsidian4.Setting(this.contentEl).setName(t("options.destination")).addDropdown((dropdown) => dropdown.addOption("next-to-folder", t("options.nextToFolder")).addOption("download", t("options.download")).setValue(this.destination).onChange((value) => {
       this.destination = value;
     }));
-    new import_obsidian3.Setting(this.contentEl).addButton((button) => button.setButtonText("Cancelar").onClick(() => this.close())).addButton((button) => button.setButtonText("Comprimir").setCta().onClick(() => this.confirm()));
+    new import_obsidian4.Setting(this.contentEl).addButton((button) => button.setButtonText(t("action.cancel")).onClick(() => this.close())).addButton((button) => button.setButtonText(t("options.compress")).setCta().onClick(() => this.confirm()));
   }
   canEncrypt(format) {
     return format.kind === "7zip" ? format.id === "7z" || format.id === "zip" : format.id === "rar" || format.id === "zip";
@@ -555,7 +817,7 @@ var OptionsModal = class extends import_obsidian3.Modal {
       return;
     const encryptedFormats = this.canEncrypt(format);
     if (this.encrypt && encryptedFormats && !this.password) {
-      new import_obsidian3.Notice("Ingres\xE1 una contrase\xF1a para cifrar el archivo.");
+      new import_obsidian4.Notice(t("options.passwordRequired"));
       return;
     }
     let rawName = this.customName ? this.archiveName.trim() : `${this.folderName}.${format.ext}`;
@@ -564,7 +826,7 @@ var OptionsModal = class extends import_obsidian3.Modal {
       rawName = rawName.slice(0, -selectedExtension.length);
     const safeName = rawName.replace(/[\\/:*?"<>|]/g, "_").replace(/\.+$/, "");
     if (!safeName || safeName === "." || safeName === "..") {
-      new import_obsidian3.Notice("Ingres\xE1 un nombre de archivo v\xE1lido.");
+      new import_obsidian4.Notice(t("options.invalidName"));
       return;
     }
     const archiveName = `${safeName}.${format.ext}`;
@@ -583,11 +845,11 @@ var OptionsModal = class extends import_obsidian3.Modal {
 };
 
 // src/settings.ts
-var import_obsidian6 = require("obsidian");
+var import_obsidian7 = require("obsidian");
 
 // src/modal-binary.ts
-var import_obsidian4 = require("obsidian");
-var BinaryModal = class extends import_obsidian4.Modal {
+var import_obsidian5 = require("obsidian");
+var BinaryModal = class extends import_obsidian5.Modal {
   constructor(app, entry, isNew, onSave) {
     super(app);
     this.isNew = isNew;
@@ -596,22 +858,22 @@ var BinaryModal = class extends import_obsidian4.Modal {
     this.pathValue = entry.path;
   }
   onOpen() {
-    this.titleEl.setText(this.isNew ? "Agregar binario" : "Editar binario");
-    new import_obsidian4.Setting(this.contentEl).setName("Nombre").setDesc("Etiqueta para identificar el motor.").addText(
-      (t) => t.setValue(this.nameValue).setPlaceholder("7-Zip").onChange((v) => {
+    this.titleEl.setText(t(this.isNew ? "binary.addTitle" : "binary.editTitle"));
+    new import_obsidian5.Setting(this.contentEl).setName(t("binary.name")).setDesc(t("binary.nameDesc")).addText(
+      (text) => text.setValue(this.nameValue).setPlaceholder("7-Zip").onChange((v) => {
         this.nameValue = v;
       })
     );
-    new import_obsidian4.Setting(this.contentEl).setName("Ruta del ejecutable").setDesc("Ruta completa de 7z.exe, WinRAR.exe o Rar.exe.").addText(
-      (t) => t.setValue(this.pathValue).setPlaceholder("C:\\Program Files\\7-Zip\\7z.exe").onChange((v) => {
+    new import_obsidian5.Setting(this.contentEl).setName(t("binary.path")).setDesc(t("binary.pathDesc")).addText(
+      (text) => text.setValue(this.pathValue).setPlaceholder("C:\\Program Files\\7-Zip\\7z.exe").onChange((v) => {
         this.pathValue = v.trim();
       })
     );
-    const buttons = new import_obsidian4.Setting(this.contentEl);
+    const buttons = new import_obsidian5.Setting(this.contentEl);
     buttons.addButton(
-      (b) => b.setButtonText("Guardar").setCta().onClick(() => {
+      (b) => b.setButtonText(t("action.save")).setCta().onClick(() => {
         if (!this.pathValue) {
-          new import_obsidian4.Notice("Indic\xE1 la ruta del ejecutable.");
+          new import_obsidian5.Notice(t("binary.pathRequired"));
           return;
         }
         this.onSave({ name: this.nameValue.trim(), path: this.pathValue });
@@ -619,7 +881,7 @@ var BinaryModal = class extends import_obsidian4.Modal {
       })
     );
     buttons.addButton(
-      (b) => b.setButtonText("Cancelar").onClick(() => {
+      (b) => b.setButtonText(t("action.cancel")).onClick(() => {
         this.close();
       })
     );
@@ -634,7 +896,7 @@ var import_fs4 = require("fs");
 var import_crypto = require("crypto");
 var import_https = require("https");
 var import_path4 = require("path");
-var import_obsidian5 = require("obsidian");
+var import_obsidian6 = require("obsidian");
 var PINNED_COMMIT = "234abf56ddc2935de44e07d5e3c40eecab95d5af";
 var REPOSITORY_URL = "https://github.com/develar/7zip-bin";
 var MAX_CUSTOM_BINARY_SIZE = 100 * 1024 * 1024;
@@ -649,34 +911,34 @@ var BINARIES = {
   "linux/ia32": { size: 1638192, sha256: "8400fe1f78c7033ddf16f55b82c3a520a91c424a29d5163c45c6e085c5834373" },
   "linux/x64": { size: 1457384, sha256: "afc9448bd0cc2eeda131cce313ef4994f9656417e0a15c8465fcda9ca859b280" }
 };
-var Download7ZipModal = class extends import_obsidian5.Modal {
+var Download7ZipModal = class extends import_obsidian6.Modal {
   constructor(plugin) {
     super(plugin.app);
     this.plugin = plugin;
     this.downloading = false;
   }
   onOpen() {
-    this.titleEl.setText("Descargar 7-Zip");
+    this.titleEl.setText(t("download.title"));
     const platformKey = `${process.platform}/${process.arch}`;
     const customUrl = this.plugin.settings.custom7ZipUrl.trim();
     const customHash = this.plugin.settings.custom7ZipSha256.trim().toLowerCase();
     const customConfigured = Boolean(customUrl || customHash);
     const customValid = !customConfigured || isHttpsUrl(customUrl) && /^[a-f0-9]{64}$/.test(customHash);
     const supported = customConfigured ? customValid : Boolean(BINARIES[platformKey]);
-    this.contentEl.createEl("p", { text: `Sistema detectado por Obsidian: ${process.platform} / ${process.arch}.` });
+    this.contentEl.createEl("p", { text: t("download.system", { platform: process.platform, arch: process.arch }) });
     const source = customConfigured && customValid ? customUrl : REPOSITORY_URL;
-    this.contentEl.createEl("p", { text: "Origen del binario: " });
+    this.contentEl.createEl("p", { text: t("download.sourceLabel") });
     const sourceLink = this.contentEl.createEl("a", { text: source, href: source });
     sourceLink.setAttr("target", "_blank");
     sourceLink.setAttr("rel", "noopener noreferrer");
     if (!customConfigured)
-      this.contentEl.createEl("p", { text: `Descarga fijada a la revisi\xF3n ${PINNED_COMMIT} del repositorio.` });
-    this.contentEl.createEl("p", { text: "Advertencia: aceptar\xE1s descargar y ejecutar un binario de terceros bajo tu propio riesgo. Se guardar\xE1 dentro de la carpeta de este plugin, no en el vault ni en temporales. El plugin verificar\xE1 su tama\xF1o y SHA-256 antes de usarlo." });
-    const buttons = new import_obsidian5.Setting(this.contentEl);
-    buttons.addButton((button) => button.setButtonText("Cancelar").onClick(() => this.close()));
-    buttons.addButton((button) => button.setButtonText("Acepto y descargar").setCta().setDisabled(!supported).onClick(() => void this.download()));
+      this.contentEl.createEl("p", { text: t("download.pinnedRevision", { commit: PINNED_COMMIT }) });
+    this.contentEl.createEl("p", { text: t("download.warning") });
+    const buttons = new import_obsidian6.Setting(this.contentEl);
+    buttons.addButton((button) => button.setButtonText(t("action.cancel")).onClick(() => this.close()));
+    buttons.addButton((button) => button.setButtonText(t("download.accept")).setCta().setDisabled(!supported).onClick(() => void this.download()));
     if (!supported)
-      this.contentEl.createEl("p", { text: customConfigured ? "Configur\xE1 una URL HTTPS directa y un SHA-256 v\xE1lido (64 caracteres hexadecimales)." : "Esta combinaci\xF3n de plataforma y arquitectura no est\xE1 publicada por 7zip-bin." });
+      this.contentEl.createEl("p", { text: t(customConfigured ? "download.invalidCustom" : "download.unsupported") });
   }
   async download() {
     if (this.downloading)
@@ -687,30 +949,30 @@ var Download7ZipModal = class extends import_obsidian5.Modal {
     const customConfigured = Boolean(customUrl || customHash);
     const binaryInfo = BINARIES[platformKey];
     if (customConfigured && (!isHttpsUrl(customUrl) || !/^[a-f0-9]{64}$/.test(customHash))) {
-      new import_obsidian5.Notice("La URL alternativa debe ser HTTPS y requiere un SHA-256 v\xE1lido de 64 caracteres.");
+      new import_obsidian6.Notice(t("download.errorCustomUrl"));
       return;
     }
     if (!customConfigured && !binaryInfo) {
-      new import_obsidian5.Notice("7zip-bin no ofrece un binario compatible con esta plataforma y arquitectura.");
+      new import_obsidian6.Notice(t("download.errorUnsupported"));
       return;
     }
     this.downloading = true;
     this.contentEl.empty();
-    this.titleEl.setText("Descargando 7-Zip");
-    const status = this.contentEl.createEl("p", { text: "Conectando con GitHub\u2026" });
+    this.titleEl.setText(t("download.titleProgress"));
+    const status = this.contentEl.createEl("p", { text: t("download.connecting") });
     try {
       const fileName = process.platform === "win32" ? "7za.exe" : "7za";
       const target = (0, import_path4.join)(this.plugin.getPluginDirectory(), "bin", process.platform, process.arch, fileName);
       const sourceUrl = customConfigured ? customUrl : getPinnedUrl(platformKey);
       const expected = customConfigured ? { sha256: customHash, size: void 0 } : binaryInfo;
       await downloadAndVerifyBinary(sourceUrl, target, expected, (received, total) => {
-        status.setText(total ? `Descargando\u2026 ${Math.floor(received / total * 100)}%` : `Descargando\u2026 ${Math.round(received / 1024)} KB`);
+        status.setText(total ? t("download.progressPercent", { percent: Math.floor(received / total * 100) }) : t("download.progressKb", { kb: Math.round(received / 1024) }));
       });
       await this.plugin.registerDownloaded7Zip(target);
-      new import_obsidian5.Notice("7-Zip qued\xF3 instalado y configurado como motor de compresi\xF3n.");
+      new import_obsidian6.Notice(t("download.installed"));
       this.close();
     } catch (error) {
-      new import_obsidian5.Notice(`No se pudo descargar 7-Zip: ${error instanceof Error ? error.message : String(error)}`);
+      new import_obsidian6.Notice(t("download.failed", { message: error instanceof Error ? error.message : String(error) }));
       this.downloading = false;
       this.close();
     }
@@ -746,12 +1008,12 @@ function downloadAndVerifyBinary(url, target, expected, onProgress) {
           const location = response.headers.location;
           response.resume();
           if (!location || redirects >= 5) {
-            fail(new Error("La descarga excedi\xF3 el l\xEDmite de redirecciones."));
+            fail(new Error(t("download.errorRedirects")));
             return;
           }
           const redirected = new URL(location, requestUrlValue);
           if (redirected.protocol !== "https:") {
-            fail(new Error("Se rechaz\xF3 una redirecci\xF3n que no usa HTTPS."));
+            fail(new Error(t("download.errorRedirectHttps")));
             return;
           }
           requestUrl(redirected.toString(), redirects + 1);
@@ -759,7 +1021,7 @@ function downloadAndVerifyBinary(url, target, expected, onProgress) {
         }
         if (response.statusCode !== 200) {
           response.resume();
-          fail(new Error(`El servidor respondi\xF3 HTTP ${(_b = response.statusCode) != null ? _b : "desconocido"}.`));
+          fail(new Error(t("download.errorHttp", { status: (_b = response.statusCode) != null ? _b : "?" })));
           return;
         }
         const chunks = [];
@@ -768,7 +1030,7 @@ function downloadAndVerifyBinary(url, target, expected, onProgress) {
           var _a2;
           received += chunk.length;
           if (received > ((_a2 = expected.size) != null ? _a2 : MAX_CUSTOM_BINARY_SIZE)) {
-            fail(new Error("El archivo descargado supera el tama\xF1o esperado."));
+            fail(new Error(t("download.errorTooLarge")));
             request.destroy();
             return;
           }
@@ -779,10 +1041,10 @@ function downloadAndVerifyBinary(url, target, expected, onProgress) {
           try {
             const data = Buffer.concat(chunks);
             if (expected.size !== void 0 && data.length !== expected.size)
-              throw new Error(`Tama\xF1o inesperado (${data.length} bytes).`);
+              throw new Error(t("download.errorSize", { bytes: data.length }));
             const hash = (0, import_crypto.createHash)("sha256").update(data).digest("hex");
             if (hash !== expected.sha256)
-              throw new Error("La suma SHA-256 no coincide; se rechaz\xF3 el binario descargado.");
+              throw new Error(t("download.errorHash"));
             (0, import_fs4.writeFileSync)(temporary, data, { flag: "wx" });
             (0, import_fs4.renameSync)(temporary, target);
             if (process.platform !== "win32")
@@ -807,7 +1069,7 @@ function getPinnedUrl(platformKey) {
   const platformPath = `${repositoryPlatform}/${process.arch}`;
   const fileName = process.platform === "win32" ? "7za.exe" : "7za";
   if (!BINARIES[platformKey])
-    throw new Error("No hay un binario oficial para esta plataforma.");
+    throw new Error(t("download.errorNoOfficial"));
   return `https://raw.githubusercontent.com/develar/7zip-bin/${PINNED_COMMIT}/${platformPath}/${fileName}`;
 }
 function isHttpsUrl(value) {
@@ -827,7 +1089,7 @@ var DEFAULT_SETTINGS = {
   custom7ZipUrl: "",
   custom7ZipSha256: ""
 };
-var ExportSettingTab = class extends import_obsidian6.PluginSettingTab {
+var ExportSettingTab = class extends import_obsidian7.PluginSettingTab {
   constructor(app, plugin) {
     super(app, plugin);
     this.plugin = plugin;
@@ -835,7 +1097,7 @@ var ExportSettingTab = class extends import_obsidian6.PluginSettingTab {
   getSettingDefinitions() {
     const s = this.plugin.settings;
     const kind = engineKindForBinary(s.activeBinaryPath);
-    const activeOptions = { "": "\u2014 seleccionar \u2014" };
+    const activeOptions = { "": t("settings.selectNone") };
     const formatOptions = {};
     const levelOptions = {};
     for (const b of s.binaries) {
@@ -844,76 +1106,76 @@ var ExportSettingTab = class extends import_obsidian6.PluginSettingTab {
     }
     if (kind) {
       for (const f of ENGINES[kind].formats)
-        formatOptions[f.id] = f.label;
+        formatOptions[f.id] = t(f.label);
       for (const l of ENGINES[kind].levels)
-        levelOptions[l.id] = l.label;
+        levelOptions[l.id] = t(l.label);
     }
-    const activeDesc = !s.activeBinaryPath ? "Binario que se usa por defecto para comprimir." : kind ? "Binario que se usa por defecto para comprimir." : "El binario activo no se reconoce como 7-Zip ni WinRAR.";
+    const activeDesc = !s.activeBinaryPath ? t("settings.activeDesc") : kind ? t("settings.activeDesc") : t("settings.activeDescUnknown");
     return [
       {
         type: "list",
-        heading: "Motores de compresi\xF3n",
-        emptyState: "Sin binarios configurados.",
+        heading: t("settings.enginesHeading"),
+        emptyState: t("settings.empty"),
         addItem: {
-          name: "Agregar binario",
+          name: t("settings.addBinary"),
           action: () => this.editBinary(null)
         },
         onDelete: (index) => {
           void this.removeBinary(index);
         },
         items: s.binaries.map((entry) => ({
-          name: entry.name || entry.path || "Binario sin nombre",
+          name: entry.name || entry.path || t("settings.unnamedBinary"),
           searchable: false,
           action: (_el, index) => this.editBinary(index)
         }))
       },
       {
         type: "group",
-        heading: "Instalar un motor de compresi\xF3n",
+        heading: t("settings.installHeading"),
         items: [
           {
-            name: "Buscar instalaciones locales",
-            desc: "Busca 7-Zip y WinRAR instalados en ubicaciones habituales y en PATH.",
+            name: t("settings.detectName"),
+            desc: t("settings.detectDesc"),
             render: (setting) => {
-              setting.addButton((button) => button.setButtonText("Buscar ahora").onClick(() => void this.detectBinaries()));
+              setting.addButton((button) => button.setButtonText(t("settings.detectButton")).onClick(() => void this.detectBinaries()));
             }
           },
           {
-            name: "Descargar 7-Zip",
-            desc: "Instala 7-Zip para usarlo como motor de compresi\xF3n de este plugin.",
+            name: t("settings.downloadName"),
+            desc: t("settings.downloadDesc"),
             render: (setting) => {
-              setting.addButton((button) => button.setButtonText("Descargar 7-Zip\u2026").setCta().onClick(() => new Download7ZipModal(this.plugin).open()));
+              setting.addButton((button) => button.setButtonText(t("settings.downloadButton")).setCta().onClick(() => new Download7ZipModal(this.plugin).open()));
             }
           },
           {
-            name: "URL directa de un binario alternativo",
-            desc: "Opcional. Peg\xE1 un enlace HTTPS directo al ejecutable compatible con este sistema; complet\xE1 tambi\xE9n su SHA-256.",
-            control: { type: "text", key: "custom7ZipUrl", placeholder: "https://\u2026/7za.exe" }
+            name: t("settings.customUrlName"),
+            desc: t("settings.customUrlDesc"),
+            control: { type: "text", key: "custom7ZipUrl", placeholder: t("settings.customUrlPlaceholder") }
           },
           {
-            name: "SHA-256 del binario alternativo",
-            desc: "Obligatorio cuando se configura una URL alternativa; el archivo se rechaza si no coincide.",
-            control: { type: "text", key: "custom7ZipSha256", placeholder: "64 caracteres hexadecimales" }
+            name: t("settings.customHashName"),
+            desc: t("settings.customHashDesc"),
+            control: { type: "text", key: "custom7ZipSha256", placeholder: t("settings.customHashPlaceholder") }
           }
         ]
       },
       {
         type: "group",
-        heading: "Preferencias de exportaci\xF3n",
+        heading: t("settings.exportHeading"),
         items: [
           {
-            name: "Motor activo",
+            name: t("settings.activeEngine"),
             desc: activeDesc,
             control: { type: "dropdown", key: "activeBinaryPath", options: activeOptions }
           },
           {
-            name: "Formato de salida",
-            desc: kind ? `Formatos soportados por ${ENGINES[kind].label}.` : void 0,
+            name: t("settings.format"),
+            desc: kind ? t("settings.formatDesc", { engine: ENGINES[kind].label }) : void 0,
             visible: kind !== null,
             control: { type: "dropdown", key: "formatId", options: formatOptions }
           },
           {
-            name: "Nivel de compresi\xF3n",
+            name: t("settings.level"),
             visible: kind !== null,
             control: { type: "dropdown", key: "levelId", options: levelOptions }
           }
@@ -1001,14 +1263,14 @@ var ExportSettingTab = class extends import_obsidian6.PluginSettingTab {
     await this.plugin.saveSettings();
     this.update();
     if (found.length)
-      new import_obsidian6.Notice(`Detecci\xF3n finalizada: ${found.length} motor(es), activo: ${(_b = (_a = s.binaries.find((entry) => entry.path === s.activeBinaryPath)) == null ? void 0 : _a.name) != null ? _b : s.activeBinaryPath}.`);
+      new import_obsidian7.Notice(t("settings.detected", { count: found.length, name: (_b = (_a = s.binaries.find((entry) => entry.path === s.activeBinaryPath)) == null ? void 0 : _a.name) != null ? _b : s.activeBinaryPath }));
     else if (!added)
-      new import_obsidian6.Notice("No se encontraron 7-Zip ni WinRAR en las ubicaciones habituales ni en PATH.");
+      new import_obsidian7.Notice(t("settings.notDetected"));
   }
 };
 
 // src/main.ts
-var ExportFolderPlugin = class extends import_obsidian7.Plugin {
+var ExportFolderPlugin = class extends import_obsidian8.Plugin {
   constructor() {
     super(...arguments);
     this.job = null;
@@ -1025,10 +1287,10 @@ var ExportFolderPlugin = class extends import_obsidian7.Plugin {
     this.statusBar = this.addStatusBarItem();
     this.registerEvent(
       this.app.workspace.on("file-menu", (menu, file) => {
-        if (!(file instanceof import_obsidian7.TFolder))
+        if (!(file instanceof import_obsidian8.TFolder))
           return;
         menu.addItem((item) => {
-          item.setTitle("Export folder to ZIP");
+          item.setTitle(t("menu.exportFolder"));
           item.setIcon("archive");
           item.onClick(() => this.exportFolder(file));
         });
@@ -1044,16 +1306,16 @@ var ExportFolderPlugin = class extends import_obsidian7.Plugin {
   }
   getPluginDirectory() {
     const adapter = this.app.vault.adapter;
-    if (!(adapter instanceof import_obsidian7.FileSystemAdapter))
-      throw new Error("Se requiere un vault local de Obsidian Desktop.");
+    if (!(adapter instanceof import_obsidian8.FileSystemAdapter))
+      throw new Error(t("error.localVaultRequired"));
     return (0, import_path5.join)(adapter.getBasePath(), this.app.vault.configDir, "plugins", this.manifest.id);
   }
   async registerDownloaded7Zip(binaryPath) {
     if (!(0, import_fs5.existsSync)(binaryPath))
-      throw new Error("El ejecutable descargado no existe.");
+      throw new Error(t("error.downloadedMissing"));
     let binary = this.settings.binaries.find((entry) => entry.path === binaryPath);
     if (!binary) {
-      binary = { name: "7-Zip (descargado desde develar/7zip-bin)", path: binaryPath };
+      binary = { name: t("engine.downloaded7zip"), path: binaryPath };
       this.settings.binaries.push(binary);
     }
     this.settings.activeBinaryPath = binaryPath;
@@ -1067,24 +1329,24 @@ var ExportFolderPlugin = class extends import_obsidian7.Plugin {
   exportFolder(folder) {
     var _a, _b;
     if (this.job) {
-      new import_obsidian7.Notice("Ya hay una exportaci\xF3n en curso.");
+      new import_obsidian8.Notice(t("error.exportInProgress"));
       return;
     }
     const adapter = this.app.vault.adapter;
-    if (!(adapter instanceof import_obsidian7.FileSystemAdapter)) {
-      new import_obsidian7.Notice("Este plugin requiere un vault local (Obsidian Desktop).");
+    if (!(adapter instanceof import_obsidian8.FileSystemAdapter)) {
+      new import_obsidian8.Notice(t("error.localVaultRequired"));
       return;
     }
     const bin = this.settings.binaries.find((b) => b.path === this.settings.activeBinaryPath);
     if (!bin || !bin.path || !(0, import_fs5.existsSync)(bin.path)) {
-      new import_obsidian7.Notice("Configur\xE1 un motor de compresi\xF3n en Settings \u2192 Export Folder to ZIP.");
+      new import_obsidian8.Notice(t("error.binaryNotConfigured"));
       this.app.setting.open();
       this.app.setting.openTabById(this.manifest.id);
       return;
     }
     const activeKind = engineKindForBinary(bin.path);
     if (!activeKind) {
-      new import_obsidian7.Notice("El binario activo no se reconoce como 7-Zip ni WinRAR.");
+      new import_obsidian8.Notice(t("error.unknownBinary"));
       return;
     }
     const available = [...this.settings.binaries].sort((left, right) => Number(right.path === this.settings.activeBinaryPath) - Number(left.path === this.settings.activeBinaryPath)).filter((entry) => entry.path && (0, import_fs5.existsSync)(entry.path)).map((entry) => ({ entry, kind: engineKindForBinary(entry.path) })).filter((item) => item.kind !== null);
@@ -1092,11 +1354,14 @@ var ExportFolderPlugin = class extends import_obsidian7.Plugin {
     for (const item of available) {
       for (const format of ENGINES[item.kind].formats) {
         if (!formats.has(format.id))
-          formats.set(format.id, { ...format, kind: item.kind });
+          formats.set(format.id, { ...format, label: t(format.label), kind: item.kind });
       }
     }
     const availableFormats = [...formats.values()];
-    const levelsByKind = { "7zip": ENGINES["7zip"].levels, winrar: ENGINES.winrar.levels };
+    const levelsByKind = {
+      "7zip": ENGINES["7zip"].levels.map((level) => ({ ...level, label: t(level.label) })),
+      winrar: ENGINES.winrar.levels.map((level) => ({ ...level, label: t(level.label) }))
+    };
     const preferredKind = (_b = (_a = formats.get(this.settings.formatId)) == null ? void 0 : _a.kind) != null ? _b : activeKind;
     const initialLevels = levelsByKind[preferredKind];
     const initialLevel = initialLevels.some((level) => level.id === this.settings.levelId) ? this.settings.levelId : initialLevels[0].id;
@@ -1106,7 +1371,7 @@ var ExportFolderPlugin = class extends import_obsidian7.Plugin {
       const selectedKind = (_a2 = formats.get(options.formatId)) == null ? void 0 : _a2.kind;
       const selectedEngine = selectedKind && available.find((item) => item.kind === selectedKind && ENGINES[item.kind].formats.some((format) => format.id === options.formatId));
       if (!selectedEngine) {
-        new import_obsidian7.Notice("No hay un motor configurado que admita ese formato.");
+        new import_obsidian8.Notice(t("error.noEngineForFormat"));
         return;
       }
       this.settings.formatId = options.formatId;
@@ -1142,8 +1407,8 @@ var ExportFolderPlugin = class extends import_obsidian7.Plugin {
       }
     );
     this.job = job;
-    this.statusBar.setText(`\u{1F4E6} Comprimiendo ${folder.name}\u2026`);
-    this.statusBar.setAttr("title", "Export Folder to ZIP \u2014 click para ver el progreso");
+    this.statusBar.setText(t("status.compressing", { name: folder.name }));
+    this.statusBar.setAttr("title", t("status.title"));
     this.statusBar.onclick = () => this.reopenProgress();
     this.statusBar.show();
     new ProgressModal(this, folder.name).open();
@@ -1156,7 +1421,7 @@ var ExportFolderPlugin = class extends import_obsidian7.Plugin {
   onProgress(pct) {
     var _a, _b, _c;
     const label = pct === null ? "\u2026" : ` ${pct}%`;
-    this.statusBar.setText(`\u{1F4E6} Comprimiendo ${(_b = (_a = this.job) == null ? void 0 : _a.folderName) != null ? _b : ""}${label}`);
+    this.statusBar.setText(t("status.compressing", { name: `${(_b = (_a = this.job) == null ? void 0 : _a.folderName) != null ? _b : ""}${label}` }));
     (_c = this.progressModal) == null ? void 0 : _c.update(pct);
   }
   onDone(archivePath) {
@@ -1167,7 +1432,7 @@ var ExportFolderPlugin = class extends import_obsidian7.Plugin {
     this.statusBar.setText("");
     this.statusBar.hide();
     this.job = null;
-    new import_obsidian7.Notice(`Compresi\xF3n de \xAB${completedFolderName}\xBB finalizada.`);
+    new import_obsidian8.Notice(t("notice.compressionDone", { name: completedFolderName }));
     new SaveModal(
       this,
       archivePath,
@@ -1185,7 +1450,7 @@ var ExportFolderPlugin = class extends import_obsidian7.Plugin {
     this.statusBar.setText("");
     this.statusBar.hide();
     this.job = null;
-    new import_obsidian7.Notice(`Error al comprimir: ${message}`);
+    new import_obsidian8.Notice(t("error.compressionFailed", { message }));
   }
   cancelJob() {
     var _a;

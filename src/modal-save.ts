@@ -2,6 +2,7 @@ import { Modal, Notice } from "obsidian";
 import { existsSync, statSync } from "fs";
 import { join } from "path";
 import { formatBytes, moveArchive, uniqueTargetPath } from "./compress";
+import { t } from "./i18n";
 import type ExportFolderPlugin from "./main";
 
 export class SaveModal extends Modal {
@@ -28,7 +29,7 @@ export class SaveModal extends Modal {
     } catch {
       // sin tamaño si el archivo ya no está
     }
-    this.titleEl.setText("Compresión finalizada");
+    this.titleEl.setText(t("save.title"));
     this.contentEl.createEl("p", { text: `«${fileName}»${sizeLabel}` });
 
     if (this.destination === "next-to-folder") this.saveNextTo();
@@ -40,9 +41,9 @@ export class SaveModal extends Modal {
     try {
       moveArchive(this.archivePath, dest);
       this.done = true;
-      new Notice(`Guardado en: ${dest}`);
+      new Notice(t("save.savedAt", { path: dest }));
     } catch (e) {
-      new Notice(`No se pudo guardar: ${e instanceof Error ? e.message : e}`);
+      new Notice(t("save.failed", { message: e instanceof Error ? e.message : String(e) }));
       return;
     }
     this.plugin.finalizeJob();
@@ -55,10 +56,10 @@ export class SaveModal extends Modal {
       try {
         moveArchive(this.archivePath, savePath);
         this.done = true;
-        new Notice(`Guardado en: ${savePath}`);
+        new Notice(t("save.savedAt", { path: savePath }));
         this.plugin.finalizeJob();
       } catch (e) {
-        new Notice(`No se pudo guardar: ${e instanceof Error ? e.message : e}`);
+        new Notice(t("save.failed", { message: e instanceof Error ? e.message : String(e) }));
       }
       this.close();
       return;
@@ -69,7 +70,7 @@ export class SaveModal extends Modal {
     }
 
     this.plugin.finalizeJob();
-    new Notice("No hay diálogo de guardado disponible; se eliminó el archivo temporal.");
+    new Notice(t("save.noDialog"));
     this.close();
   }
 

@@ -1,6 +1,6 @@
 {
   "name": "export-folder-to-zip",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "Export vault folders to ZIP/7z/RAR using external compression engines",
   "main": "main.js",
   "scripts": {

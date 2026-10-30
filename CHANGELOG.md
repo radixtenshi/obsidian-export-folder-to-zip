@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.4 — 2026-10-30
+
+- Localized the interface to follow Obsidian's language, with English and Castellano translations.
+
 ## 1.0.3 — 2026-10-30
 
 - Added output format and compression-level selection based on all configured compression engines.

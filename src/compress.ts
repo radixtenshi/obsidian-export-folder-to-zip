@@ -3,6 +3,7 @@ import { copyFileSync, existsSync, mkdirSync, renameSync, rmSync, unlinkSync } f
 import { tmpdir } from "os";
 import { basename, join } from "path";
 import { buildArgs, buildArgsForFolder } from "./engines";
+import { t } from "./i18n";
 
 export interface JobCallbacks {
   onProgress(percent: number | null): void;
@@ -40,7 +41,7 @@ export class CompressionJob {
       mkdirSync(this.tempDir, { recursive: true });
       this.cb.onProgress(null);
     } catch (error) {
-      this.fail(`No se pudo preparar el directorio temporal: ${error instanceof Error ? error.message : String(error)}`);
+      this.fail(t("error.tempDir", { message: error instanceof Error ? error.message : String(error) }));
       return;
     }
 
@@ -48,10 +49,10 @@ export class CompressionJob {
       const args = buildArgsForFolder(this.binaryPath, join(this.parentDir, this.folderName), this.folderName, "tar", this.levelId, this.tarPath, this.configDir);
       this.spawnOnce(args, (code, stderr) => {
         if (this.cancelled) return;
-        if (code !== 0) return this.fail(stderr || `El proceso terminó con código ${code}`);
+        if (code !== 0) return this.fail(stderr || t("error.processCode", { code: code ?? "?" }));
         this.spawnOnce(["a", "-tgzip", "-y", this.archivePath, basename(this.tarPath)], (code2, stderr2) => {
           if (this.cancelled) return;
-          if (code2 !== 0) return this.fail(stderr2 || `El proceso terminó con código ${code2}`);
+          if (code2 !== 0) return this.fail(stderr2 || t("error.processCode", { code: code2 ?? "?" }));
           try {
             unlinkSync(this.tarPath);
           } catch {
@@ -64,8 +65,8 @@ export class CompressionJob {
       const args = buildArgsForFolder(this.binaryPath, join(this.parentDir, this.folderName), this.folderName, this.formatId, this.levelId, this.archivePath, this.configDir, this.password);
       this.spawnOnce(args, (code, stderr) => {
         if (this.cancelled) return;
-        if (code !== 0) return this.fail(stderr || `El proceso terminó con código ${code}`);
-        if (!existsSync(this.archivePath)) return this.fail("El motor no generó el archivo de salida.");
+        if (code !== 0) return this.fail(stderr || t("error.processCode", { code: code ?? "?" }));
+        if (!existsSync(this.archivePath)) return this.fail(t("error.noOutput"));
         this.cb.onDone(this.archivePath);
       });
     }
@@ -94,12 +95,12 @@ export class CompressionJob {
     let stderr = "";
     const onSpawnError = (error: Error) => {
       this.child = null;
-      this.fail(`No se pudo iniciar el motor de compresión (${this.binaryPath}): ${error.message}`);
+      this.fail(t("error.spawnEngine", { path: this.binaryPath, message: error.message }));
     };
     try {
       this.child = spawn(this.binaryPath, args, { cwd: this.parentDir, windowsHide: true, stdio: ["ignore", "pipe", "pipe"] });
     } catch (error) {
-      this.fail(`No se pudo iniciar «${this.binaryPath}»: ${error instanceof Error ? error.message : String(error)}`);
+      this.fail(t("error.spawnBinary", { path: this.binaryPath, message: error instanceof Error ? error.message : String(error) }));
       return;
     }
     this.child.on("error", onSpawnError);

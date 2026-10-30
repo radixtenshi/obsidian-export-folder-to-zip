@@ -1,15 +1,16 @@
 import { existsSync } from "fs";
 import { join, win32 } from "path";
+import { t, type MessageKey } from "./i18n";
 
 export interface FormatDef {
   id: string;
-  label: string;
+  label: MessageKey;
   ext: string;
 }
 
 export interface LevelDef {
   id: string;
-  label: string;
+  label: MessageKey;
 }
 
 export type EngineKind = "7zip" | "winrar";
@@ -26,30 +27,30 @@ export const ENGINES: Record<EngineKind, EngineSpec> = {
     kind: "7zip",
     label: "7-Zip",
     formats: [
-      { id: "zip", label: "ZIP (.zip)", ext: "zip" },
-      { id: "7z", label: "7z (.7z)", ext: "7z" },
-      { id: "tar", label: "TAR (.tar)", ext: "tar" },
-      { id: "tgz", label: "tar.gz (.tar.gz)", ext: "tar.gz" },
+      { id: "zip", label: "format.zip", ext: "zip" },
+      { id: "7z", label: "format.7z", ext: "7z" },
+      { id: "tar", label: "format.tar", ext: "tar" },
+      { id: "tgz", label: "format.tgz", ext: "tar.gz" },
     ],
     levels: [
-      { id: "0", label: "Almacenar (sin comprimir)" },
-      { id: "3", label: "Rápido" },
-      { id: "5", label: "Normal" },
-      { id: "9", label: "Máximo" },
+      { id: "0", label: "level.store" },
+      { id: "3", label: "level.fast" },
+      { id: "5", label: "level.normal" },
+      { id: "9", label: "level.max" },
     ],
   },
   winrar: {
     kind: "winrar",
     label: "WinRAR",
     formats: [
-      { id: "rar", label: "RAR (.rar)", ext: "rar" },
-      { id: "zip", label: "ZIP (.zip)", ext: "zip" },
+      { id: "rar", label: "format.rar", ext: "rar" },
+      { id: "zip", label: "format.zip", ext: "zip" },
     ],
     levels: [
-      { id: "0", label: "Almacenar" },
-      { id: "1", label: "Muy rápido" },
-      { id: "3", label: "Normal" },
-      { id: "5", label: "Máximo" },
+      { id: "0", label: "level.store" },
+      { id: "1", label: "level.veryFast" },
+      { id: "3", label: "level.normal" },
+      { id: "5", label: "level.max" },
     ],
   },
 };
@@ -103,16 +104,16 @@ export function detectInstalled(): { name: string; path: string }[] {
   const programRoots = [process.env.ProgramFiles, process.env["ProgramFiles(x86)"], process.env.LOCALAPPDATA]
     .filter((root): root is string => Boolean(root));
   for (const root of programRoots) {
-    add(join(root, "7-Zip", "7z.exe"), "7-Zip (7z.exe)");
-    add(join(root, "WinRAR", "Rar.exe"), "WinRAR (Rar.exe)");
-    add(join(root, "WinRAR", "WinRAR.exe"), "WinRAR (WinRAR.exe)");
+    add(join(root, "7-Zip", "7z.exe"), t("engine.detected7zip"));
+    add(join(root, "WinRAR", "Rar.exe"), t("engine.detectedWinrarConsole"));
+    add(join(root, "WinRAR", "WinRAR.exe"), t("engine.detectedWinrar"));
   }
 
   // Common per-user install location and portable installations exposed through PATH.
-  if (process.env.LOCALAPPDATA) add(join(process.env.LOCALAPPDATA, "Programs", "7-Zip", "7z.exe"), "7-Zip (usuario)");
+  if (process.env.LOCALAPPDATA) add(join(process.env.LOCALAPPDATA, "Programs", "7-Zip", "7z.exe"), t("engine.detected7zipUser"));
   for (const executable of ["7z.exe", "rar.exe", "WinRAR.exe"]) {
     const foundInPath = findOnPath(executable);
-    if (foundInPath) add(foundInPath, `${engineKindForBinary(executable) === "winrar" ? "WinRAR" : "7-Zip"} (PATH)`);
+    if (foundInPath) add(foundInPath, t(engineKindForBinary(executable) === "winrar" ? "engine.detectedWinrarPath" : "engine.detected7zipPath"));
   }
 
   for (const [path, name] of candidates) found.push({ name, path });

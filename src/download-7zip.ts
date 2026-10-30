@@ -3,6 +3,7 @@ import { createHash } from "crypto";
 import { get } from "https";
 import { dirname, join } from "path";
 import { Modal, Notice, Setting } from "obsidian";
+import { t } from "./i18n";
 import type ExportFolderPlugin from "./main";
 
 const PINNED_COMMIT = "234abf56ddc2935de44e07d5e3c40eecab95d5af";
@@ -28,25 +29,25 @@ export class Download7ZipModal extends Modal {
   }
 
   onOpen() {
-    this.titleEl.setText("Descargar 7-Zip");
+    this.titleEl.setText(t("download.title"));
     const platformKey = `${process.platform}/${process.arch}`;
     const customUrl = this.plugin.settings.custom7ZipUrl.trim();
     const customHash = this.plugin.settings.custom7ZipSha256.trim().toLowerCase();
     const customConfigured = Boolean(customUrl || customHash);
     const customValid = !customConfigured || (isHttpsUrl(customUrl) && /^[a-f0-9]{64}$/.test(customHash));
     const supported = customConfigured ? customValid : Boolean(BINARIES[platformKey]);
-    this.contentEl.createEl("p", { text: `Sistema detectado por Obsidian: ${process.platform} / ${process.arch}.` });
+    this.contentEl.createEl("p", { text: t("download.system", { platform: process.platform, arch: process.arch }) });
     const source = customConfigured && customValid ? customUrl : REPOSITORY_URL;
-    this.contentEl.createEl("p", { text: "Origen del binario: " });
+    this.contentEl.createEl("p", { text: t("download.sourceLabel") });
     const sourceLink = this.contentEl.createEl("a", { text: source, href: source });
     sourceLink.setAttr("target", "_blank");
     sourceLink.setAttr("rel", "noopener noreferrer");
-    if (!customConfigured) this.contentEl.createEl("p", { text: `Descarga fijada a la revisión ${PINNED_COMMIT} del repositorio.` });
-    this.contentEl.createEl("p", { text: "Advertencia: aceptarás descargar y ejecutar un binario de terceros bajo tu propio riesgo. Se guardará dentro de la carpeta de este plugin, no en el vault ni en temporales. El plugin verificará su tamaño y SHA-256 antes de usarlo." });
+    if (!customConfigured) this.contentEl.createEl("p", { text: t("download.pinnedRevision", { commit: PINNED_COMMIT }) });
+    this.contentEl.createEl("p", { text: t("download.warning") });
     const buttons = new Setting(this.contentEl);
-    buttons.addButton((button) => button.setButtonText("Cancelar").onClick(() => this.close()));
-    buttons.addButton((button) => button.setButtonText("Acepto y descargar").setCta().setDisabled(!supported).onClick(() => void this.download()));
-    if (!supported) this.contentEl.createEl("p", { text: customConfigured ? "Configurá una URL HTTPS directa y un SHA-256 válido (64 caracteres hexadecimales)." : "Esta combinación de plataforma y arquitectura no está publicada por 7zip-bin." });
+    buttons.addButton((button) => button.setButtonText(t("action.cancel")).onClick(() => this.close()));
+    buttons.addButton((button) => button.setButtonText(t("download.accept")).setCta().setDisabled(!supported).onClick(() => void this.download()));
+    if (!supported) this.contentEl.createEl("p", { text: t(customConfigured ? "download.invalidCustom" : "download.unsupported") });
   }
 
   private async download() {
@@ -57,30 +58,30 @@ export class Download7ZipModal extends Modal {
     const customConfigured = Boolean(customUrl || customHash);
     const binaryInfo = BINARIES[platformKey];
     if (customConfigured && (!isHttpsUrl(customUrl) || !/^[a-f0-9]{64}$/.test(customHash))) {
-      new Notice("La URL alternativa debe ser HTTPS y requiere un SHA-256 válido de 64 caracteres.");
+      new Notice(t("download.errorCustomUrl"));
       return;
     }
     if (!customConfigured && !binaryInfo) {
-      new Notice("7zip-bin no ofrece un binario compatible con esta plataforma y arquitectura.");
+      new Notice(t("download.errorUnsupported"));
       return;
     }
     this.downloading = true;
     this.contentEl.empty();
-    this.titleEl.setText("Descargando 7-Zip");
-    const status = this.contentEl.createEl("p", { text: "Conectando con GitHub…" });
+    this.titleEl.setText(t("download.titleProgress"));
+    const status = this.contentEl.createEl("p", { text: t("download.connecting") });
     try {
       const fileName = process.platform === "win32" ? "7za.exe" : "7za";
       const target = join(this.plugin.getPluginDirectory(), "bin", process.platform, process.arch, fileName);
       const sourceUrl = customConfigured ? customUrl : getPinnedUrl(platformKey);
       const expected = customConfigured ? { sha256: customHash, size: undefined } : binaryInfo;
       await downloadAndVerifyBinary(sourceUrl, target, expected, (received, total) => {
-        status.setText(total ? `Descargando… ${Math.floor(received / total * 100)}%` : `Descargando… ${Math.round(received / 1024)} KB`);
+        status.setText(total ? t("download.progressPercent", { percent: Math.floor(received / total * 100) }) : t("download.progressKb", { kb: Math.round(received / 1024) }));
       });
       await this.plugin.registerDownloaded7Zip(target);
-      new Notice("7-Zip quedó instalado y configurado como motor de compresión.");
+      new Notice(t("download.installed"));
       this.close();
     } catch (error) {
-      new Notice(`No se pudo descargar 7-Zip: ${error instanceof Error ? error.message : String(error)}`);
+      new Notice(t("download.failed", { message: error instanceof Error ? error.message : String(error) }));
       this.downloading = false;
       this.close();
     }
@@ -111,12 +112,12 @@ function downloadAndVerifyBinary(url: string, target: string, expected: { size?:
         const location = response.headers.location;
         response.resume();
         if (!location || redirects >= 5) {
-          fail(new Error("La descarga excedió el límite de redirecciones."));
+          fail(new Error(t("download.errorRedirects")));
           return;
         }
         const redirected = new URL(location, requestUrlValue);
         if (redirected.protocol !== "https:") {
-          fail(new Error("Se rechazó una redirección que no usa HTTPS."));
+          fail(new Error(t("download.errorRedirectHttps")));
           return;
         }
         requestUrl(redirected.toString(), redirects + 1);
@@ -124,7 +125,7 @@ function downloadAndVerifyBinary(url: string, target: string, expected: { size?:
       }
       if (response.statusCode !== 200) {
         response.resume();
-        fail(new Error(`El servidor respondió HTTP ${response.statusCode ?? "desconocido"}.`));
+        fail(new Error(t("download.errorHttp", { status: response.statusCode ?? "?" })));
         return;
       }
       const chunks: Buffer[] = [];
@@ -132,7 +133,7 @@ function downloadAndVerifyBinary(url: string, target: string, expected: { size?:
       response.on("data", (chunk: Buffer) => {
         received += chunk.length;
         if (received > (expected.size ?? MAX_CUSTOM_BINARY_SIZE)) {
-          fail(new Error("El archivo descargado supera el tamaño esperado."));
+          fail(new Error(t("download.errorTooLarge")));
           request.destroy();
           return;
         }
@@ -142,9 +143,9 @@ function downloadAndVerifyBinary(url: string, target: string, expected: { size?:
       response.on("end", () => {
         try {
           const data = Buffer.concat(chunks);
-          if (expected.size !== undefined && data.length !== expected.size) throw new Error(`Tamaño inesperado (${data.length} bytes).`);
+          if (expected.size !== undefined && data.length !== expected.size) throw new Error(t("download.errorSize", { bytes: data.length }));
           const hash = createHash("sha256").update(data).digest("hex");
-          if (hash !== expected.sha256) throw new Error("La suma SHA-256 no coincide; se rechazó el binario descargado.");
+          if (hash !== expected.sha256) throw new Error(t("download.errorHash"));
           writeFileSync(temporary, data, { flag: "wx" });
           renameSync(temporary, target);
           if (process.platform !== "win32") chmodSync(target, 0o755);
@@ -168,7 +169,7 @@ function getPinnedUrl(platformKey: string): string {
   const repositoryPlatform = process.platform === "win32" ? "win" : process.platform === "darwin" ? "mac" : process.platform;
   const platformPath = `${repositoryPlatform}/${process.arch}`;
   const fileName = process.platform === "win32" ? "7za.exe" : "7za";
-  if (!BINARIES[platformKey]) throw new Error("No hay un binario oficial para esta plataforma.");
+  if (!BINARIES[platformKey]) throw new Error(t("download.errorNoOfficial"));
   return `https://raw.githubusercontent.com/develar/7zip-bin/${PINNED_COMMIT}/${platformPath}/${fileName}`;
 }
 
