@@ -27,18 +27,19 @@ __export(main_exports, {
   default: () => ExportFolderPlugin
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian5 = require("obsidian");
-var import_fs4 = require("fs");
-var import_path3 = require("path");
+var import_obsidian7 = require("obsidian");
+var import_fs5 = require("fs");
+var import_path5 = require("path");
 
 // src/compress.ts
 var import_child_process = require("child_process");
 var import_fs2 = require("fs");
 var import_os = require("os");
-var import_path = require("path");
+var import_path2 = require("path");
 
 // src/engines.ts
 var import_fs = require("fs");
+var import_path = require("path");
 var ENGINES = {
   "7zip": {
     kind: "7zip",
@@ -85,67 +86,126 @@ function engineKindForBinary(path) {
     return "winrar";
   return null;
 }
+function executableForBinary(path) {
+  if (engineKindForBinary(path) === "7zip") {
+    if (/\\7z\.exe$/i.test(path))
+      return path;
+    if (/\\7zfm\.exe$/i.test(path)) {
+      const consolePath2 = path.replace(/7zfm\.exe$/i, "7z.exe");
+      if ((0, import_fs.existsSync)(consolePath2))
+        return consolePath2;
+    }
+    if (/\\7zg\.exe$/i.test(path)) {
+      const consolePath2 = path.replace(/7zg\.exe$/i, "7z.exe");
+      if ((0, import_fs.existsSync)(consolePath2))
+        return consolePath2;
+    }
+    return path;
+  }
+  if (engineKindForBinary(path) !== "winrar" || /\\rar\.exe$/i.test(path))
+    return path;
+  const consolePath = path.replace(/[^\\/]+$/i, "Rar.exe");
+  return (0, import_fs.existsSync)(consolePath) ? consolePath : path;
+}
 function detectInstalled() {
   const found = [];
-  const roots = ["C:\\Program Files", "C:\\Program Files (x86)"];
-  const candidates = [
-    ["7-Zip\\7z.exe", "7-Zip", "7zip"],
-    ["WinRAR\\WinRAR.exe", "WinRAR", "winrar"],
-    ["WinRAR\\Rar.exe", "WinRAR (Rar)", "winrar"]
-  ];
-  for (const root of roots) {
-    for (const [rel, name, kind] of candidates) {
-      const p = `${root}\\${rel}`;
-      if ((0, import_fs.existsSync)(p) && !found.some((f) => f.path === p))
-        found.push({ name: `${name} (${kind})`, path: p });
-    }
+  const candidates = /* @__PURE__ */ new Map();
+  const add = (path, name) => {
+    if (path && (0, import_fs.existsSync)(path) && !candidates.has(path.toLowerCase()))
+      candidates.set(path.toLowerCase(), name);
+  };
+  const programRoots = [process.env.ProgramFiles, process.env["ProgramFiles(x86)"], process.env.LOCALAPPDATA].filter((root) => Boolean(root));
+  for (const root of programRoots) {
+    add((0, import_path.join)(root, "7-Zip", "7z.exe"), "7-Zip (7z.exe)");
+    add((0, import_path.join)(root, "WinRAR", "Rar.exe"), "WinRAR (Rar.exe)");
+    add((0, import_path.join)(root, "WinRAR", "WinRAR.exe"), "WinRAR (WinRAR.exe)");
   }
+  if (process.env.LOCALAPPDATA)
+    add((0, import_path.join)(process.env.LOCALAPPDATA, "Programs", "7-Zip", "7z.exe"), "7-Zip (usuario)");
+  for (const executable of ["7z.exe", "rar.exe", "WinRAR.exe"]) {
+    const foundInPath = findOnPath(executable);
+    if (foundInPath)
+      add(foundInPath, `${engineKindForBinary(executable) === "winrar" ? "WinRAR" : "7-Zip"} (PATH)`);
+  }
+  for (const [path, name] of candidates)
+    found.push({ name, path });
   return found;
 }
+function findOnPath(executable) {
+  var _a;
+  const pathValue = (_a = process.env.PATH) != null ? _a : "";
+  for (const directory of pathValue.split(";").map((part) => part.trim()).filter(Boolean)) {
+    const candidate = (0, import_path.join)(directory.replace(/^"|"$/g, ""), executable);
+    if ((0, import_fs.existsSync)(candidate))
+      return candidate;
+  }
+  return void 0;
+}
 var ARCHIVE_PLACEHOLDER = "__ARCHIVE__";
-function buildArgs(binaryPath, folderName, formatId, levelId, archivePath, configDir) {
+function buildArgs(binaryPath, folderName, formatId, levelId, archivePath, configDir, password) {
   const kind = engineKindForBinary(binaryPath);
-  const raw = kind === "winrar" ? buildWinrarArgs(formatId, levelId, folderName, configDir) : build7zArgs(formatId, levelId, folderName, configDir);
+  const raw = kind === "winrar" ? buildWinrarArgs(formatId, levelId, folderName, configDir, password) : build7zArgs(formatId, levelId, folderName, configDir, password);
   return raw.map((a) => a === ARCHIVE_PLACEHOLDER ? archivePath : a);
 }
-function build7zArgs(formatId, levelId, folderName, configDir) {
-  return ["a", `-t${formatId}`, `-mx=${levelId}`, "-y", ARCHIVE_PLACEHOLDER, folderName, ...excludes7z(configDir)];
+function build7zArgs(formatId, levelId, folderName, configDir, password) {
+  const args = ["a", `-t${formatId}`, `-mx=${levelId}`, "-y"];
+  if (password)
+    args.push(`-p${password}`, "-mhe=on");
+  return [...args, ARCHIVE_PLACEHOLDER, folderName, ...excludes7z(configDir)];
 }
-function buildWinrarArgs(formatId, levelId, folderName, configDir) {
+function buildArgsForFolder(binaryPath, folderPath, folderName, formatId, levelId, archivePath, configDir, password) {
+  const args = buildArgs(binaryPath, folderName, formatId, levelId, archivePath, configDir, password);
+  const sourceIndex = args.findIndex((arg) => arg === folderName);
+  if (sourceIndex >= 0)
+    args[sourceIndex] = import_path.win32.join(folderPath, "*");
+  return args;
+}
+function buildWinrarArgs(formatId, levelId, folderName, configDir, password) {
   const args = ["a", "-inul", "-y", `-m${levelId}`];
   if (formatId === "zip")
     args.push("-afzip");
+  if (password)
+    args.push(`-p${password}`, "-hp");
   args.push(ARCHIVE_PLACEHOLDER, folderName, ...excludesRar(configDir));
   return args;
 }
 
 // src/compress.ts
 var CompressionJob = class {
-  constructor(binaryPath, parentDir, folderName, formatId, levelId, configDir, cb) {
+  constructor(binaryPath, parentDir, folderName, outputBaseName, formatId, levelId, configDir, password, cb) {
     this.binaryPath = binaryPath;
     this.parentDir = parentDir;
     this.folderName = folderName;
+    this.outputBaseName = outputBaseName;
     this.formatId = formatId;
     this.levelId = levelId;
     this.configDir = configDir;
+    this.password = password;
     this.cb = cb;
     this.child = null;
     this.cancelled = false;
-    this.tempDir = (0, import_path.join)((0, import_os.tmpdir)(), `obsidian-export-${Date.now()}`);
+    this.failed = false;
+    this.tempDir = (0, import_path2.join)((0, import_os.tmpdir)(), `obsidian-export-${Date.now()}`);
     const ext = formatId === "tgz" ? "tar.gz" : formatId;
-    this.archivePath = (0, import_path.join)(this.tempDir, `${folderName}.${ext}`);
-    this.tarPath = (0, import_path.join)(this.tempDir, `${folderName}.tar`);
+    this.archivePath = (0, import_path2.join)(this.tempDir, `${outputBaseName}.${ext}`);
+    this.tarPath = (0, import_path2.join)(this.tempDir, `${outputBaseName}.tar`);
   }
   start() {
-    (0, import_fs2.mkdirSync)(this.tempDir, { recursive: true });
+    try {
+      (0, import_fs2.mkdirSync)(this.tempDir, { recursive: true });
+      this.cb.onProgress(null);
+    } catch (error) {
+      this.fail(`No se pudo preparar el directorio temporal: ${error instanceof Error ? error.message : String(error)}`);
+      return;
+    }
     if (this.formatId === "tgz") {
-      const args = buildArgs(this.binaryPath, this.folderName, "tar", this.levelId, this.tarPath, this.configDir);
+      const args = buildArgsForFolder(this.binaryPath, (0, import_path2.join)(this.parentDir, this.folderName), this.folderName, "tar", this.levelId, this.tarPath, this.configDir);
       this.spawnOnce(args, (code, stderr) => {
         if (this.cancelled)
           return;
         if (code !== 0)
           return this.fail(stderr || `El proceso termin\xF3 con c\xF3digo ${code}`);
-        this.spawnOnce(["a", "-tgzip", "-y", this.archivePath, (0, import_path.basename)(this.tarPath)], (code2, stderr2) => {
+        this.spawnOnce(["a", "-tgzip", "-y", this.archivePath, (0, import_path2.basename)(this.tarPath)], (code2, stderr2) => {
           if (this.cancelled)
             return;
           if (code2 !== 0)
@@ -158,7 +218,7 @@ var CompressionJob = class {
         });
       });
     } else {
-      const args = buildArgs(this.binaryPath, this.folderName, this.formatId, this.levelId, this.archivePath, this.configDir);
+      const args = buildArgsForFolder(this.binaryPath, (0, import_path2.join)(this.parentDir, this.folderName), this.folderName, this.formatId, this.levelId, this.archivePath, this.configDir, this.password);
       this.spawnOnce(args, (code, stderr) => {
         if (this.cancelled)
           return;
@@ -187,17 +247,26 @@ var CompressionJob = class {
   }
   spawnOnce(args, done) {
     var _a, _b;
-    this.child = (0, import_child_process.spawn)(this.binaryPath, args, { cwd: this.parentDir, windowsHide: true });
+    this.cb.onProgress(null);
     let stderr = "";
+    const onSpawnError = (error) => {
+      this.child = null;
+      this.fail(`No se pudo iniciar el motor de compresi\xF3n (${this.binaryPath}): ${error.message}`);
+    };
+    try {
+      this.child = (0, import_child_process.spawn)(this.binaryPath, args, { cwd: this.parentDir, windowsHide: true, stdio: ["ignore", "pipe", "pipe"] });
+    } catch (error) {
+      this.fail(`No se pudo iniciar \xAB${this.binaryPath}\xBB: ${error instanceof Error ? error.message : String(error)}`);
+      return;
+    }
+    this.child.on("error", onSpawnError);
     (_a = this.child.stdout) == null ? void 0 : _a.on("data", (d) => this.parseProgress(d.toString()));
     (_b = this.child.stderr) == null ? void 0 : _b.on("data", (d) => {
       stderr += d.toString();
     });
-    this.child.on("error", (e) => {
-      this.child = null;
-      this.fail(e.message);
-    });
     this.child.on("close", (code) => {
+      if (this.cancelled)
+        return;
       this.child = null;
       done(code, stderr.trim());
     });
@@ -211,16 +280,19 @@ var CompressionJob = class {
       this.cb.onProgress(Math.min(pct, 100));
   }
   fail(message) {
+    if (this.failed || this.cancelled)
+      return;
+    this.failed = true;
     this.cleanup();
     this.cb.onError(message);
   }
 };
 function uniqueTargetPath(dir, baseName, ext) {
-  const plain = (0, import_path.join)(dir, `${baseName}.${ext}`);
+  const plain = (0, import_path2.join)(dir, `${baseName}.${ext}`);
   if (!(0, import_fs2.existsSync)(plain))
     return plain;
   const ts = (/* @__PURE__ */ new Date()).toISOString().replace(/[-:T]/g, "").slice(0, 15);
-  return (0, import_path.join)(dir, `${baseName}-${ts}.${ext}`);
+  return (0, import_path2.join)(dir, `${baseName}-${ts}.${ext}`);
 }
 function moveArchive(src, dest) {
   try {
@@ -268,7 +340,7 @@ var ProgressModal = class extends import_obsidian.Modal {
   }
   update(percent) {
     if (percent === null) {
-      this.pctEl.setText("Comprimiendo\u2026");
+      this.pctEl.setText("Motor iniciado; esperando progreso\u2026");
       return;
     }
     this.pctEl.setText(`${percent}%`);
@@ -284,9 +356,9 @@ var ProgressModal = class extends import_obsidian.Modal {
 // src/modal-save.ts
 var import_obsidian2 = require("obsidian");
 var import_fs3 = require("fs");
-var import_path2 = require("path");
+var import_path3 = require("path");
 var SaveModal = class extends import_obsidian2.Modal {
-  constructor(plugin, archivePath, folderName, parentDir, baseName, ext) {
+  constructor(plugin, archivePath, folderName, parentDir, baseName, ext, destination, archiveName) {
     super(plugin.app);
     this.plugin = plugin;
     this.archivePath = archivePath;
@@ -294,10 +366,12 @@ var SaveModal = class extends import_obsidian2.Modal {
     this.parentDir = parentDir;
     this.baseName = baseName;
     this.ext = ext;
+    this.destination = destination;
+    this.archiveName = archiveName;
     this.done = false;
   }
   onOpen() {
-    const fileName = (0, import_path2.basename)(this.archivePath);
+    const fileName = this.archiveName;
     let sizeLabel = "";
     try {
       sizeLabel = ` \u2014 ${formatBytes((0, import_fs3.statSync)(this.archivePath).size)}`;
@@ -305,16 +379,13 @@ var SaveModal = class extends import_obsidian2.Modal {
     }
     this.titleEl.setText("Compresi\xF3n finalizada");
     this.contentEl.createEl("p", { text: `\xAB${fileName}\xBB${sizeLabel}` });
-    const buttons = new import_obsidian2.Setting(this.contentEl);
-    buttons.addButton(
-      (b) => b.setButtonText("Guardar junto a la carpeta").onClick(() => this.saveNextTo())
-    );
-    buttons.addButton(
-      (b) => b.setButtonText("Descargar").setCta().onClick(() => void this.download())
-    );
+    if (this.destination === "next-to-folder")
+      this.saveNextTo();
+    else
+      void this.download();
   }
   saveNextTo() {
-    const dest = uniqueTargetPath(this.parentDir, this.baseName, this.ext);
+    const dest = uniqueTargetPath(this.parentDir, this.archiveName.replace(new RegExp(`\\.${this.ext.replace(/\./g, "\\.")}$`, "i"), ""), this.ext);
     try {
       moveArchive(this.archivePath, dest);
       this.done = true;
@@ -340,20 +411,15 @@ var SaveModal = class extends import_obsidian2.Modal {
       this.close();
       return;
     }
-    if (savePath === null)
+    if (savePath === void 0) {
+      this.close();
       return;
-    try {
-      const { shell } = require("electron");
-      shell.showItemInFolder(this.archivePath);
-      new import_obsidian2.Notice(`Archivo temporal en: ${this.archivePath}`);
-      this.done = true;
-      this.plugin.finalizeJob(false);
-    } catch (e) {
-      new import_obsidian2.Notice(`No se pudo abrir el explorador. Archivo en: ${this.archivePath}`);
     }
+    this.plugin.finalizeJob();
+    new import_obsidian2.Notice("No hay di\xE1logo de guardado disponible; se elimin\xF3 el archivo temporal.");
     this.close();
   }
-  /** Devuelve la ruta elegida, null si el SO no ofreció diálogo (fallback), o undefined si el usuario canceló. */
+  /** Devuelve la ruta elegida; null si no hay diálogo; undefined si se canceló. */
   async showNativeDialog() {
     var _a, _b;
     try {
@@ -369,8 +435,8 @@ var SaveModal = class extends import_obsidian2.Modal {
       if (!(dialog == null ? void 0 : dialog.showSaveDialog))
         return null;
       const res = await dialog.showSaveDialog({
-        defaultPath: (0, import_path2.join)(this.parentDir, `${this.baseName}.${this.ext}`),
-        filters: [{ name: this.ext, extensions: this.ext.split(".") }]
+        defaultPath: (0, import_path3.join)(this.parentDir, this.archiveName),
+        filters: [{ name: this.ext, extensions: [this.ext] }]
       });
       if (res.canceled || !res.filePath)
         return void 0;
@@ -387,12 +453,141 @@ var SaveModal = class extends import_obsidian2.Modal {
   }
 };
 
+// src/modal-options.ts
+var import_obsidian3 = require("obsidian");
+var OptionsModal = class extends import_obsidian3.Modal {
+  constructor(plugin, folderName, formats, levelsByKind, initialFormatId, initialLevelId, initialDestination, onConfirm) {
+    super(plugin.app);
+    this.plugin = plugin;
+    this.folderName = folderName;
+    this.formats = formats;
+    this.levelsByKind = levelsByKind;
+    this.onConfirm = onConfirm;
+    this.customName = false;
+    this.encrypt = false;
+    this.archiveName = "";
+    this.password = "";
+    this.formatId = initialFormatId;
+    this.levelId = initialLevelId;
+    this.destination = initialDestination;
+  }
+  onOpen() {
+    this.draw();
+  }
+  draw() {
+    var _a;
+    const format = (_a = this.formats.find((item) => item.id === this.formatId)) != null ? _a : this.formats[0];
+    if (!format)
+      return;
+    const encryptedFormats = this.canEncrypt(format);
+    const levels = this.levelsByKind[format.kind];
+    this.levelId = this.selectedLevelId(format);
+    this.titleEl.setText("Exportar carpeta");
+    this.contentEl.createEl("p", { text: `Configur\xE1 la exportaci\xF3n de \xAB${this.folderName}\xBB. No se crear\xE1 ning\xFAn archivo hasta confirmar.` });
+    new import_obsidian3.Setting(this.contentEl).setName("Formato de salida").addDropdown((dropdown) => {
+      for (const item of this.formats)
+        dropdown.addOption(item.id, item.label);
+      dropdown.setValue(format.id).onChange((value) => {
+        this.formatId = value;
+        this.archiveName = "";
+        const newFormat = this.formats.find((item) => item.id === value);
+        if (newFormat) {
+          this.levelId = this.selectedLevelId(newFormat);
+          if (!this.canEncrypt(newFormat))
+            this.encrypt = false;
+        }
+        this.render();
+      });
+    });
+    new import_obsidian3.Setting(this.contentEl).setName("Nivel de compresi\xF3n").addDropdown((dropdown) => {
+      for (const item of levels)
+        dropdown.addOption(item.id, item.label);
+      dropdown.setValue(this.levelId).onChange((value) => {
+        this.levelId = value;
+      });
+    });
+    new import_obsidian3.Setting(this.contentEl).setName("Definir nombre del archivo").addToggle((toggle) => toggle.setValue(this.customName).onChange((value) => {
+      this.customName = value;
+      if (value && !this.archiveName)
+        this.archiveName = `${this.folderName}.${format.ext}`;
+      this.render();
+    }));
+    if (this.customName)
+      new import_obsidian3.Setting(this.contentEl).setName("Nombre del archivo").setDesc(`Pod\xE9s escribirlo con o sin extensi\xF3n; se usar\xE1 .${format.ext}.`).addText((text) => text.setValue(this.archiveName || `${this.folderName}.${format.ext}`).setPlaceholder(`${this.folderName}.${format.ext}`).onChange((value) => {
+        this.archiveName = value;
+      }));
+    const encryption = new import_obsidian3.Setting(this.contentEl).setName("Cifrar archivo");
+    if (!encryptedFormats)
+      encryption.setDesc("El formato seleccionado no admite cifrado.");
+    encryption.addToggle((toggle) => toggle.setDisabled(!encryptedFormats).setValue(this.encrypt && encryptedFormats).onChange((value) => {
+      this.encrypt = value;
+      this.render();
+    }));
+    if (this.encrypt && encryptedFormats) {
+      const passwordSetting = new import_obsidian3.Setting(this.contentEl).setName("Contrase\xF1a");
+      const passwordInput = passwordSetting.controlEl.createEl("input", { type: "password", placeholder: "Ingres\xE1 una contrase\xF1a" });
+      passwordInput.value = this.password;
+      passwordInput.addEventListener("input", () => {
+        this.password = passwordInput.value;
+      });
+    }
+    new import_obsidian3.Setting(this.contentEl).setName("Destino").addDropdown((dropdown) => dropdown.addOption("next-to-folder", "Guardar junto a la carpeta").addOption("download", "Descargar (elegir ubicaci\xF3n)").setValue(this.destination).onChange((value) => {
+      this.destination = value;
+    }));
+    new import_obsidian3.Setting(this.contentEl).addButton((button) => button.setButtonText("Cancelar").onClick(() => this.close())).addButton((button) => button.setButtonText("Comprimir").setCta().onClick(() => this.confirm()));
+  }
+  canEncrypt(format) {
+    return format.kind === "7zip" ? format.id === "7z" || format.id === "zip" : format.id === "rar" || format.id === "zip";
+  }
+  selectedLevelId(format) {
+    var _a, _b;
+    const levels = this.levelsByKind[format.kind];
+    return levels.some((level) => level.id === this.levelId) ? this.levelId : (_b = (_a = levels[0]) == null ? void 0 : _a.id) != null ? _b : "5";
+  }
+  render() {
+    this.contentEl.empty();
+    this.draw();
+  }
+  confirm() {
+    var _a;
+    const format = (_a = this.formats.find((item) => item.id === this.formatId)) != null ? _a : this.formats[0];
+    if (!format)
+      return;
+    const encryptedFormats = this.canEncrypt(format);
+    if (this.encrypt && encryptedFormats && !this.password) {
+      new import_obsidian3.Notice("Ingres\xE1 una contrase\xF1a para cifrar el archivo.");
+      return;
+    }
+    let rawName = this.customName ? this.archiveName.trim() : `${this.folderName}.${format.ext}`;
+    const selectedExtension = `.${format.ext}`;
+    if (rawName.toLowerCase().endsWith(selectedExtension.toLowerCase()))
+      rawName = rawName.slice(0, -selectedExtension.length);
+    const safeName = rawName.replace(/[\\/:*?"<>|]/g, "_").replace(/\.+$/, "");
+    if (!safeName || safeName === "." || safeName === "..") {
+      new import_obsidian3.Notice("Ingres\xE1 un nombre de archivo v\xE1lido.");
+      return;
+    }
+    const archiveName = `${safeName}.${format.ext}`;
+    const options = {
+      folderName: this.folderName,
+      formatId: format.id,
+      extension: format.ext,
+      levelId: this.levelId,
+      archiveName,
+      password: this.encrypt && encryptedFormats ? this.password : void 0,
+      destination: this.destination
+    };
+    this.close();
+    this.onConfirm(options);
+  }
+};
+
 // src/settings.ts
-var import_obsidian4 = require("obsidian");
+var import_obsidian6 = require("obsidian");
 
 // src/modal-binary.ts
-var import_obsidian3 = require("obsidian");
-var BinaryModal = class extends import_obsidian3.Modal {
+var import_obsidian4 = require("obsidian");
+var BinaryModal = class extends import_obsidian4.Modal {
   constructor(app, entry, isNew, onSave) {
     super(app);
     this.isNew = isNew;
@@ -402,21 +597,21 @@ var BinaryModal = class extends import_obsidian3.Modal {
   }
   onOpen() {
     this.titleEl.setText(this.isNew ? "Agregar binario" : "Editar binario");
-    new import_obsidian3.Setting(this.contentEl).setName("Nombre").setDesc("Etiqueta para identificar el motor.").addText(
+    new import_obsidian4.Setting(this.contentEl).setName("Nombre").setDesc("Etiqueta para identificar el motor.").addText(
       (t) => t.setValue(this.nameValue).setPlaceholder("7-Zip").onChange((v) => {
         this.nameValue = v;
       })
     );
-    new import_obsidian3.Setting(this.contentEl).setName("Ruta del ejecutable").setDesc("Ruta completa de 7z.exe, WinRAR.exe o Rar.exe.").addText(
+    new import_obsidian4.Setting(this.contentEl).setName("Ruta del ejecutable").setDesc("Ruta completa de 7z.exe, WinRAR.exe o Rar.exe.").addText(
       (t) => t.setValue(this.pathValue).setPlaceholder("C:\\Program Files\\7-Zip\\7z.exe").onChange((v) => {
         this.pathValue = v.trim();
       })
     );
-    const buttons = new import_obsidian3.Setting(this.contentEl);
+    const buttons = new import_obsidian4.Setting(this.contentEl);
     buttons.addButton(
       (b) => b.setButtonText("Guardar").setCta().onClick(() => {
         if (!this.pathValue) {
-          new import_obsidian3.Notice("Indic\xE1 la ruta del ejecutable.");
+          new import_obsidian4.Notice("Indic\xE1 la ruta del ejecutable.");
           return;
         }
         this.onSave({ name: this.nameValue.trim(), path: this.pathValue });
@@ -434,14 +629,205 @@ var BinaryModal = class extends import_obsidian3.Modal {
   }
 };
 
+// src/download-7zip.ts
+var import_fs4 = require("fs");
+var import_crypto = require("crypto");
+var import_https = require("https");
+var import_path4 = require("path");
+var import_obsidian5 = require("obsidian");
+var PINNED_COMMIT = "234abf56ddc2935de44e07d5e3c40eecab95d5af";
+var REPOSITORY_URL = "https://github.com/develar/7zip-bin";
+var MAX_CUSTOM_BINARY_SIZE = 100 * 1024 * 1024;
+var BINARIES = {
+  "win32/arm64": { size: 1089024, sha256: "81f67048b7366870e5d49f00a8c570570c6a0dd11c05df7a09a8c52870cc83bd" },
+  "win32/ia32": { size: 792064, sha256: "31fd52f8996986623cf52c3b4d0f7ac74a9dec63fc16c902cef673eed550c435" },
+  "win32/x64": { size: 1231360, sha256: "b0cfdeaf429f5cc53f85123dd8f5a5feb92c19d31aa34df257edf9a26be05f95" },
+  "darwin/arm64": { size: 988208, sha256: "6f4dd78a82cf574f49118d99be620fd3edcfa9e48971d8523816b7ed20419c47" },
+  "darwin/x64": { size: 2941888, sha256: "434075f6ff5ea9250571033ca06b95d464efcad87a528dd0b224816c86b1a444" },
+  "linux/arm": { size: 1006780, sha256: "3a68d5c794bb8534040f3f93480a7fe8194bf5ed8e0d3e2ac0de4dea9677a64c" },
+  "linux/arm64": { size: 1155640, sha256: "d363b0055afb4f7f336152dd5d00f1cc992d6e86a56e4a1ec84b2ac26dee27ff" },
+  "linux/ia32": { size: 1638192, sha256: "8400fe1f78c7033ddf16f55b82c3a520a91c424a29d5163c45c6e085c5834373" },
+  "linux/x64": { size: 1457384, sha256: "afc9448bd0cc2eeda131cce313ef4994f9656417e0a15c8465fcda9ca859b280" }
+};
+var Download7ZipModal = class extends import_obsidian5.Modal {
+  constructor(plugin) {
+    super(plugin.app);
+    this.plugin = plugin;
+    this.downloading = false;
+  }
+  onOpen() {
+    this.titleEl.setText("Descargar 7-Zip");
+    const platformKey = `${process.platform}/${process.arch}`;
+    const customUrl = this.plugin.settings.custom7ZipUrl.trim();
+    const customHash = this.plugin.settings.custom7ZipSha256.trim().toLowerCase();
+    const customConfigured = Boolean(customUrl || customHash);
+    const customValid = !customConfigured || isHttpsUrl(customUrl) && /^[a-f0-9]{64}$/.test(customHash);
+    const supported = customConfigured ? customValid : Boolean(BINARIES[platformKey]);
+    this.contentEl.createEl("p", { text: `Sistema detectado por Obsidian: ${process.platform} / ${process.arch}.` });
+    const source = customConfigured && customValid ? customUrl : REPOSITORY_URL;
+    this.contentEl.createEl("p", { text: "Origen del binario: " });
+    const sourceLink = this.contentEl.createEl("a", { text: source, href: source });
+    sourceLink.setAttr("target", "_blank");
+    sourceLink.setAttr("rel", "noopener noreferrer");
+    if (!customConfigured)
+      this.contentEl.createEl("p", { text: `Descarga fijada a la revisi\xF3n ${PINNED_COMMIT} del repositorio.` });
+    this.contentEl.createEl("p", { text: "Advertencia: aceptar\xE1s descargar y ejecutar un binario de terceros bajo tu propio riesgo. Se guardar\xE1 dentro de la carpeta de este plugin, no en el vault ni en temporales. El plugin verificar\xE1 su tama\xF1o y SHA-256 antes de usarlo." });
+    const buttons = new import_obsidian5.Setting(this.contentEl);
+    buttons.addButton((button) => button.setButtonText("Cancelar").onClick(() => this.close()));
+    buttons.addButton((button) => button.setButtonText("Acepto y descargar").setCta().setDisabled(!supported).onClick(() => void this.download()));
+    if (!supported)
+      this.contentEl.createEl("p", { text: customConfigured ? "Configur\xE1 una URL HTTPS directa y un SHA-256 v\xE1lido (64 caracteres hexadecimales)." : "Esta combinaci\xF3n de plataforma y arquitectura no est\xE1 publicada por 7zip-bin." });
+  }
+  async download() {
+    if (this.downloading)
+      return;
+    const platformKey = `${process.platform}/${process.arch}`;
+    const customUrl = this.plugin.settings.custom7ZipUrl.trim();
+    const customHash = this.plugin.settings.custom7ZipSha256.trim().toLowerCase();
+    const customConfigured = Boolean(customUrl || customHash);
+    const binaryInfo = BINARIES[platformKey];
+    if (customConfigured && (!isHttpsUrl(customUrl) || !/^[a-f0-9]{64}$/.test(customHash))) {
+      new import_obsidian5.Notice("La URL alternativa debe ser HTTPS y requiere un SHA-256 v\xE1lido de 64 caracteres.");
+      return;
+    }
+    if (!customConfigured && !binaryInfo) {
+      new import_obsidian5.Notice("7zip-bin no ofrece un binario compatible con esta plataforma y arquitectura.");
+      return;
+    }
+    this.downloading = true;
+    this.contentEl.empty();
+    this.titleEl.setText("Descargando 7-Zip");
+    const status = this.contentEl.createEl("p", { text: "Conectando con GitHub\u2026" });
+    try {
+      const fileName = process.platform === "win32" ? "7za.exe" : "7za";
+      const target = (0, import_path4.join)(this.plugin.getPluginDirectory(), "bin", process.platform, process.arch, fileName);
+      const sourceUrl = customConfigured ? customUrl : getPinnedUrl(platformKey);
+      const expected = customConfigured ? { sha256: customHash, size: void 0 } : binaryInfo;
+      await downloadAndVerifyBinary(sourceUrl, target, expected, (received, total) => {
+        status.setText(total ? `Descargando\u2026 ${Math.floor(received / total * 100)}%` : `Descargando\u2026 ${Math.round(received / 1024)} KB`);
+      });
+      await this.plugin.registerDownloaded7Zip(target);
+      new import_obsidian5.Notice("7-Zip qued\xF3 instalado y configurado como motor de compresi\xF3n.");
+      this.close();
+    } catch (error) {
+      new import_obsidian5.Notice(`No se pudo descargar 7-Zip: ${error instanceof Error ? error.message : String(error)}`);
+      this.downloading = false;
+      this.close();
+    }
+  }
+};
+function downloadAndVerifyBinary(url, target, expected, onProgress) {
+  return new Promise((resolve, reject) => {
+    const temporary = `${target}.download`;
+    let settled = false;
+    const fail = (error) => {
+      if (settled)
+        return;
+      settled = true;
+      try {
+        if ((0, import_fs4.existsSync)(temporary))
+          (0, import_fs4.rmSync)(temporary, { force: true });
+      } catch (e) {
+      }
+      reject(error);
+    };
+    try {
+      (0, import_fs4.mkdirSync)((0, import_path4.dirname)(target), { recursive: true });
+      if ((0, import_fs4.existsSync)(temporary))
+        (0, import_fs4.rmSync)(temporary, { force: true });
+    } catch (error) {
+      reject(error);
+      return;
+    }
+    const requestUrl = (requestUrlValue, redirects) => {
+      const request = (0, import_https.get)(requestUrlValue, { headers: { "User-Agent": "Obsidian-Export-Folder-to-ZIP" } }, (response) => {
+        var _a, _b;
+        if ([301, 302, 303, 307, 308].includes((_a = response.statusCode) != null ? _a : 0)) {
+          const location = response.headers.location;
+          response.resume();
+          if (!location || redirects >= 5) {
+            fail(new Error("La descarga excedi\xF3 el l\xEDmite de redirecciones."));
+            return;
+          }
+          const redirected = new URL(location, requestUrlValue);
+          if (redirected.protocol !== "https:") {
+            fail(new Error("Se rechaz\xF3 una redirecci\xF3n que no usa HTTPS."));
+            return;
+          }
+          requestUrl(redirected.toString(), redirects + 1);
+          return;
+        }
+        if (response.statusCode !== 200) {
+          response.resume();
+          fail(new Error(`El servidor respondi\xF3 HTTP ${(_b = response.statusCode) != null ? _b : "desconocido"}.`));
+          return;
+        }
+        const chunks = [];
+        let received = 0;
+        response.on("data", (chunk) => {
+          var _a2;
+          received += chunk.length;
+          if (received > ((_a2 = expected.size) != null ? _a2 : MAX_CUSTOM_BINARY_SIZE)) {
+            fail(new Error("El archivo descargado supera el tama\xF1o esperado."));
+            request.destroy();
+            return;
+          }
+          chunks.push(chunk);
+          onProgress(received, Number(response.headers["content-length"]) || expected.size || 0);
+        });
+        response.on("end", () => {
+          try {
+            const data = Buffer.concat(chunks);
+            if (expected.size !== void 0 && data.length !== expected.size)
+              throw new Error(`Tama\xF1o inesperado (${data.length} bytes).`);
+            const hash = (0, import_crypto.createHash)("sha256").update(data).digest("hex");
+            if (hash !== expected.sha256)
+              throw new Error("La suma SHA-256 no coincide; se rechaz\xF3 el binario descargado.");
+            (0, import_fs4.writeFileSync)(temporary, data, { flag: "wx" });
+            (0, import_fs4.renameSync)(temporary, target);
+            if (process.platform !== "win32")
+              (0, import_fs4.chmodSync)(target, 493);
+            if (!settled) {
+              settled = true;
+              resolve();
+            }
+          } catch (error) {
+            fail(error instanceof Error ? error : new Error(String(error)));
+          }
+        });
+        response.on("error", fail);
+      });
+      request.on("error", fail);
+    };
+    requestUrl(url, 0);
+  });
+}
+function getPinnedUrl(platformKey) {
+  const repositoryPlatform = process.platform === "win32" ? "win" : process.platform === "darwin" ? "mac" : process.platform;
+  const platformPath = `${repositoryPlatform}/${process.arch}`;
+  const fileName = process.platform === "win32" ? "7za.exe" : "7za";
+  if (!BINARIES[platformKey])
+    throw new Error("No hay un binario oficial para esta plataforma.");
+  return `https://raw.githubusercontent.com/develar/7zip-bin/${PINNED_COMMIT}/${platformPath}/${fileName}`;
+}
+function isHttpsUrl(value) {
+  try {
+    return new URL(value).protocol === "https:";
+  } catch (e) {
+    return false;
+  }
+}
+
 // src/settings.ts
 var DEFAULT_SETTINGS = {
   binaries: [],
   activeBinaryPath: "",
   formatId: "zip",
-  levelId: "5"
+  levelId: "5",
+  custom7ZipUrl: "",
+  custom7ZipSha256: ""
 };
-var ExportSettingTab = class extends import_obsidian4.PluginSettingTab {
+var ExportSettingTab = class extends import_obsidian6.PluginSettingTab {
   constructor(app, plugin) {
     super(app, plugin);
     this.plugin = plugin;
@@ -472,11 +858,6 @@ var ExportSettingTab = class extends import_obsidian4.PluginSettingTab {
           name: "Agregar binario",
           action: () => this.editBinary(null)
         },
-        extraButtons: [
-          (b) => b.setIcon("lucide-search").setTooltip("Detectar instalados").onClick(() => {
-            void this.detectBinaries();
-          })
-        ],
         onDelete: (index) => {
           void this.removeBinary(index);
         },
@@ -485,6 +866,36 @@ var ExportSettingTab = class extends import_obsidian4.PluginSettingTab {
           searchable: false,
           action: (_el, index) => this.editBinary(index)
         }))
+      },
+      {
+        type: "group",
+        heading: "Instalar un motor de compresi\xF3n",
+        items: [
+          {
+            name: "Buscar instalaciones locales",
+            desc: "Busca 7-Zip y WinRAR instalados en ubicaciones habituales y en PATH.",
+            render: (setting) => {
+              setting.addButton((button) => button.setButtonText("Buscar ahora").onClick(() => void this.detectBinaries()));
+            }
+          },
+          {
+            name: "Descargar 7-Zip",
+            desc: "Instala 7-Zip para usarlo como motor de compresi\xF3n de este plugin.",
+            render: (setting) => {
+              setting.addButton((button) => button.setButtonText("Descargar 7-Zip\u2026").setCta().onClick(() => new Download7ZipModal(this.plugin).open()));
+            }
+          },
+          {
+            name: "URL directa de un binario alternativo",
+            desc: "Opcional. Peg\xE1 un enlace HTTPS directo al ejecutable compatible con este sistema; complet\xE1 tambi\xE9n su SHA-256.",
+            control: { type: "text", key: "custom7ZipUrl", placeholder: "https://\u2026/7za.exe" }
+          },
+          {
+            name: "SHA-256 del binario alternativo",
+            desc: "Obligatorio cuando se configura una URL alternativa; el archivo se rechaza si no coincide.",
+            control: { type: "text", key: "custom7ZipSha256", placeholder: "64 caracteres hexadecimales" }
+          }
+        ]
       },
       {
         type: "group",
@@ -529,6 +940,12 @@ var ExportSettingTab = class extends import_obsidian4.PluginSettingTab {
       case "levelId":
         s.levelId = String(value);
         break;
+      case "custom7ZipUrl":
+        s.custom7ZipUrl = String(value).trim();
+        break;
+      case "custom7ZipSha256":
+        s.custom7ZipSha256 = String(value).trim().toLowerCase();
+        break;
       default:
         return;
     }
@@ -561,6 +978,7 @@ var ExportSettingTab = class extends import_obsidian4.PluginSettingTab {
     this.update();
   }
   async detectBinaries() {
+    var _a, _b;
     const s = this.plugin.settings;
     const found = detectInstalled();
     let added = 0;
@@ -570,18 +988,27 @@ var ExportSettingTab = class extends import_obsidian4.PluginSettingTab {
         added++;
       }
     }
-    if (!s.activeBinaryPath && s.binaries.length) {
-      s.activeBinaryPath = s.binaries[0].path;
+    if (found.length) {
+      const activeStillExists = found.some((entry) => entry.path === s.activeBinaryPath) || s.binaries.some((entry) => entry.path === s.activeBinaryPath);
+      if (!activeStillExists)
+        s.activeBinaryPath = found[0].path;
+      const activeKind = engineKindForBinary(s.activeBinaryPath);
+      if (activeKind) {
+        s.formatId = ENGINES[activeKind].formats[0].id;
+        s.levelId = ENGINES[activeKind].levels.some((level) => level.id === "5") ? "5" : ENGINES[activeKind].levels[0].id;
+      }
     }
     await this.plugin.saveSettings();
     this.update();
-    if (!added)
-      new import_obsidian4.Notice("No se detectaron binarios nuevos.");
+    if (found.length)
+      new import_obsidian6.Notice(`Detecci\xF3n finalizada: ${found.length} motor(es), activo: ${(_b = (_a = s.binaries.find((entry) => entry.path === s.activeBinaryPath)) == null ? void 0 : _a.name) != null ? _b : s.activeBinaryPath}.`);
+    else if (!added)
+      new import_obsidian6.Notice("No se encontraron 7-Zip ni WinRAR en las ubicaciones habituales ni en PATH.");
   }
 };
 
 // src/main.ts
-var ExportFolderPlugin = class extends import_obsidian5.Plugin {
+var ExportFolderPlugin = class extends import_obsidian7.Plugin {
   constructor() {
     super(...arguments);
     this.job = null;
@@ -590,6 +1017,7 @@ var ExportFolderPlugin = class extends import_obsidian5.Plugin {
     this.lastParentDir = "";
     this.lastBaseName = "";
     this.lastExt = "";
+    this.lastDestination = "download";
   }
   async onload() {
     const data = await this.loadData();
@@ -597,7 +1025,7 @@ var ExportFolderPlugin = class extends import_obsidian5.Plugin {
     this.statusBar = this.addStatusBarItem();
     this.registerEvent(
       this.app.workspace.on("file-menu", (menu, file) => {
-        if (!(file instanceof import_obsidian5.TFolder))
+        if (!(file instanceof import_obsidian7.TFolder))
           return;
         menu.addItem((item) => {
           item.setTitle("Export folder to ZIP");
@@ -614,46 +1042,99 @@ var ExportFolderPlugin = class extends import_obsidian5.Plugin {
   async saveSettings() {
     await this.saveData(this.settings);
   }
+  getPluginDirectory() {
+    const adapter = this.app.vault.adapter;
+    if (!(adapter instanceof import_obsidian7.FileSystemAdapter))
+      throw new Error("Se requiere un vault local de Obsidian Desktop.");
+    return (0, import_path5.join)(adapter.getBasePath(), this.app.vault.configDir, "plugins", this.manifest.id);
+  }
+  async registerDownloaded7Zip(binaryPath) {
+    if (!(0, import_fs5.existsSync)(binaryPath))
+      throw new Error("El ejecutable descargado no existe.");
+    let binary = this.settings.binaries.find((entry) => entry.path === binaryPath);
+    if (!binary) {
+      binary = { name: "7-Zip (descargado desde develar/7zip-bin)", path: binaryPath };
+      this.settings.binaries.push(binary);
+    }
+    this.settings.activeBinaryPath = binaryPath;
+    this.settings.formatId = "7z";
+    this.settings.levelId = "5";
+    await this.saveSettings();
+    const settings = this.app.setting;
+    settings.open();
+    settings.openTabById(this.manifest.id);
+  }
   exportFolder(folder) {
     var _a, _b;
     if (this.job) {
-      new import_obsidian5.Notice("Ya hay una exportaci\xF3n en curso.");
+      new import_obsidian7.Notice("Ya hay una exportaci\xF3n en curso.");
       return;
     }
     const adapter = this.app.vault.adapter;
-    if (!(adapter instanceof import_obsidian5.FileSystemAdapter)) {
-      new import_obsidian5.Notice("Este plugin requiere un vault local (Obsidian Desktop).");
+    if (!(adapter instanceof import_obsidian7.FileSystemAdapter)) {
+      new import_obsidian7.Notice("Este plugin requiere un vault local (Obsidian Desktop).");
       return;
     }
     const bin = this.settings.binaries.find((b) => b.path === this.settings.activeBinaryPath);
-    if (!bin || !bin.path || !(0, import_fs4.existsSync)(bin.path)) {
-      new import_obsidian5.Notice("Configur\xE1 un motor de compresi\xF3n en Settings \u2192 Export Folder to ZIP.");
+    if (!bin || !bin.path || !(0, import_fs5.existsSync)(bin.path)) {
+      new import_obsidian7.Notice("Configur\xE1 un motor de compresi\xF3n en Settings \u2192 Export Folder to ZIP.");
       this.app.setting.open();
       this.app.setting.openTabById(this.manifest.id);
       return;
     }
-    const kind = engineKindForBinary(bin.path);
-    if (!kind) {
-      new import_obsidian5.Notice("El binario activo no se reconoce como 7-Zip ni WinRAR.");
+    const activeKind = engineKindForBinary(bin.path);
+    if (!activeKind) {
+      new import_obsidian7.Notice("El binario activo no se reconoce como 7-Zip ni WinRAR.");
       return;
     }
-    const spec = ENGINES[kind];
-    const format = (_a = spec.formats.find((f) => f.id === this.settings.formatId)) != null ? _a : spec.formats[0];
-    const level = (_b = spec.levels.find((l) => l.id === this.settings.levelId)) != null ? _b : spec.levels[0];
+    const available = [...this.settings.binaries].sort((left, right) => Number(right.path === this.settings.activeBinaryPath) - Number(left.path === this.settings.activeBinaryPath)).filter((entry) => entry.path && (0, import_fs5.existsSync)(entry.path)).map((entry) => ({ entry, kind: engineKindForBinary(entry.path) })).filter((item) => item.kind !== null);
+    const formats = /* @__PURE__ */ new Map();
+    for (const item of available) {
+      for (const format of ENGINES[item.kind].formats) {
+        if (!formats.has(format.id))
+          formats.set(format.id, { ...format, kind: item.kind });
+      }
+    }
+    const availableFormats = [...formats.values()];
+    const levelsByKind = { "7zip": ENGINES["7zip"].levels, winrar: ENGINES.winrar.levels };
+    const preferredKind = (_b = (_a = formats.get(this.settings.formatId)) == null ? void 0 : _a.kind) != null ? _b : activeKind;
+    const initialLevels = levelsByKind[preferredKind];
+    const initialLevel = initialLevels.some((level) => level.id === this.settings.levelId) ? this.settings.levelId : initialLevels[0].id;
+    new OptionsModal(this, folder.name, availableFormats, levelsByKind, this.settings.formatId, initialLevel, this.lastDestination, (options) => {
+      var _a2;
+      this.lastDestination = options.destination;
+      const selectedKind = (_a2 = formats.get(options.formatId)) == null ? void 0 : _a2.kind;
+      const selectedEngine = selectedKind && available.find((item) => item.kind === selectedKind && ENGINES[item.kind].formats.some((format) => format.id === options.formatId));
+      if (!selectedEngine) {
+        new import_obsidian7.Notice("No hay un motor configurado que admita ese formato.");
+        return;
+      }
+      this.settings.formatId = options.formatId;
+      this.settings.levelId = options.levelId;
+      void this.saveSettings();
+      this.startExport(folder, selectedEngine.entry.path, options.formatId, options.extension, options.levelId, options.archiveName, options.password, options.destination);
+    }).open();
+  }
+  startExport(folder, binaryPath, formatId, extension, levelId, archiveName, password, destination) {
+    const adapter = this.app.vault.adapter;
     const parts = folder.path.split("/");
     const relParent = parts.slice(0, -1).join("/");
-    const parentDir = relParent ? (0, import_path3.join)(adapter.getBasePath(), ...relParent.split("/")) : adapter.getBasePath();
+    const parentDir = relParent ? (0, import_path5.join)(adapter.getBasePath(), ...relParent.split("/")) : adapter.getBasePath();
     this.lastArchivePath = null;
     this.lastParentDir = parentDir;
-    this.lastBaseName = folder.name;
-    this.lastExt = format.ext;
+    this.lastBaseName = archiveName.replace(new RegExp(`\\.${extension.replace(/\./g, "\\.")}$`, "i"), "");
+    this.lastExt = extension;
+    this.lastDestination = destination;
+    const outputBaseName = this.lastBaseName;
     const job = new CompressionJob(
-      bin.path,
+      executableForBinary(binaryPath),
       parentDir,
       folder.name,
-      format.id,
-      level.id,
+      outputBaseName,
+      formatId,
+      levelId,
       this.app.vault.configDir,
+      password,
       {
         onProgress: (pct) => this.onProgress(pct),
         onDone: (p) => this.onDone(p),
@@ -666,7 +1147,11 @@ var ExportFolderPlugin = class extends import_obsidian5.Plugin {
     this.statusBar.onclick = () => this.reopenProgress();
     this.statusBar.show();
     new ProgressModal(this, folder.name).open();
-    job.start();
+    try {
+      job.start();
+    } catch (error) {
+      this.onError(error instanceof Error ? error.message : String(error));
+    }
   }
   onProgress(pct) {
     var _a, _b, _c;
@@ -675,19 +1160,23 @@ var ExportFolderPlugin = class extends import_obsidian5.Plugin {
     (_c = this.progressModal) == null ? void 0 : _c.update(pct);
   }
   onDone(archivePath) {
-    var _a, _b, _c, _d;
+    var _a, _b, _c;
     this.lastArchivePath = archivePath;
-    (_a = this.progressModal) == null ? void 0 : _a.close();
+    const completedFolderName = (_b = (_a = this.job) == null ? void 0 : _a.folderName) != null ? _b : "";
+    (_c = this.progressModal) == null ? void 0 : _c.close();
     this.statusBar.setText("");
     this.statusBar.hide();
-    new import_obsidian5.Notice(`Compresi\xF3n de \xAB${(_b = this.job) == null ? void 0 : _b.folderName}\xBB finalizada.`);
+    this.job = null;
+    new import_obsidian7.Notice(`Compresi\xF3n de \xAB${completedFolderName}\xBB finalizada.`);
     new SaveModal(
       this,
       archivePath,
-      (_d = (_c = this.job) == null ? void 0 : _c.folderName) != null ? _d : "",
+      completedFolderName,
       this.lastParentDir,
       this.lastBaseName,
-      this.lastExt
+      this.lastExt,
+      this.lastDestination,
+      `${this.lastBaseName}.${this.lastExt}`
     ).open();
   }
   onError(message) {
@@ -696,7 +1185,7 @@ var ExportFolderPlugin = class extends import_obsidian5.Plugin {
     this.statusBar.setText("");
     this.statusBar.hide();
     this.job = null;
-    new import_obsidian5.Notice(`Error al comprimir: ${message}`);
+    new import_obsidian7.Notice(`Error al comprimir: ${message}`);
   }
   cancelJob() {
     var _a;

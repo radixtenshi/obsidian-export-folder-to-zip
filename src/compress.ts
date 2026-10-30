@@ -2,7 +2,7 @@ import { ChildProcess, spawn } from "child_process";
 import { copyFileSync, existsSync, mkdirSync, renameSync, rmSync, unlinkSync } from "fs";
 import { tmpdir } from "os";
 import { basename, join } from "path";
-import { buildArgs } from "./engines";
+import { buildArgs, buildArgsForFolder } from "./engines";
 
 export interface JobCallbacks {
   onProgress(percent: number | null): void;
@@ -13,6 +13,7 @@ export interface JobCallbacks {
 export class CompressionJob {
   private child: ChildProcess | null = null;
   private cancelled = false;
+  private failed = false;
   readonly tempDir: string;
   readonly archivePath: string;
   private readonly tarPath: string;
@@ -21,22 +22,30 @@ export class CompressionJob {
     private binaryPath: string,
     private parentDir: string,
     readonly folderName: string,
+    private outputBaseName: string,
     readonly formatId: string,
     private levelId: string,
     private configDir: string,
+    private password: string | undefined,
     private cb: JobCallbacks
   ) {
     this.tempDir = join(tmpdir(), `obsidian-export-${Date.now()}`);
     const ext = formatId === "tgz" ? "tar.gz" : formatId;
-    this.archivePath = join(this.tempDir, `${folderName}.${ext}`);
-    this.tarPath = join(this.tempDir, `${folderName}.tar`);
+    this.archivePath = join(this.tempDir, `${outputBaseName}.${ext}`);
+    this.tarPath = join(this.tempDir, `${outputBaseName}.tar`);
   }
 
   start() {
-    mkdirSync(this.tempDir, { recursive: true });
+    try {
+      mkdirSync(this.tempDir, { recursive: true });
+      this.cb.onProgress(null);
+    } catch (error) {
+      this.fail(`No se pudo preparar el directorio temporal: ${error instanceof Error ? error.message : String(error)}`);
+      return;
+    }
 
     if (this.formatId === "tgz") {
-      const args = buildArgs(this.binaryPath, this.folderName, "tar", this.levelId, this.tarPath, this.configDir);
+      const args = buildArgsForFolder(this.binaryPath, join(this.parentDir, this.folderName), this.folderName, "tar", this.levelId, this.tarPath, this.configDir);
       this.spawnOnce(args, (code, stderr) => {
         if (this.cancelled) return;
         if (code !== 0) return this.fail(stderr || `El proceso terminó con código ${code}`);
@@ -52,7 +61,7 @@ export class CompressionJob {
         });
       });
     } else {
-      const args = buildArgs(this.binaryPath, this.folderName, this.formatId, this.levelId, this.archivePath, this.configDir);
+      const args = buildArgsForFolder(this.binaryPath, join(this.parentDir, this.folderName), this.folderName, this.formatId, this.levelId, this.archivePath, this.configDir, this.password);
       this.spawnOnce(args, (code, stderr) => {
         if (this.cancelled) return;
         if (code !== 0) return this.fail(stderr || `El proceso terminó con código ${code}`);
@@ -81,17 +90,25 @@ export class CompressionJob {
   }
 
   private spawnOnce(args: string[], done: (code: number | null, stderr: string) => void) {
-    this.child = spawn(this.binaryPath, args, { cwd: this.parentDir, windowsHide: true });
+    this.cb.onProgress(null);
     let stderr = "";
+    const onSpawnError = (error: Error) => {
+      this.child = null;
+      this.fail(`No se pudo iniciar el motor de compresión (${this.binaryPath}): ${error.message}`);
+    };
+    try {
+      this.child = spawn(this.binaryPath, args, { cwd: this.parentDir, windowsHide: true, stdio: ["ignore", "pipe", "pipe"] });
+    } catch (error) {
+      this.fail(`No se pudo iniciar «${this.binaryPath}»: ${error instanceof Error ? error.message : String(error)}`);
+      return;
+    }
+    this.child.on("error", onSpawnError);
     this.child.stdout?.on("data", (d: Buffer) => this.parseProgress(d.toString()));
     this.child.stderr?.on("data", (d: Buffer) => {
       stderr += d.toString();
     });
-    this.child.on("error", (e) => {
-      this.child = null;
-      this.fail(e.message);
-    });
     this.child.on("close", (code) => {
+      if (this.cancelled) return;
       this.child = null;
       done(code, stderr.trim());
     });
@@ -105,6 +122,8 @@ export class CompressionJob {
   }
 
   private fail(message: string) {
+    if (this.failed || this.cancelled) return;
+    this.failed = true;
     this.cleanup();
     this.cb.onError(message);
   }

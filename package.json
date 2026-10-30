@@ -1,11 +1,12 @@
 {
   "name": "export-folder-to-zip",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Export vault folders to ZIP/7z/RAR using external compression engines",
   "main": "main.js",
   "scripts": {
     "dev": "node esbuild.config.mjs",
-    "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production"
+    "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
+    "validate:release": "node scripts/validate-release.mjs"
   },
   "keywords": [],
   "author": "",

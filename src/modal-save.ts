@@ -1,6 +1,6 @@
-import { Modal, Notice, Setting } from "obsidian";
+import { Modal, Notice } from "obsidian";
 import { existsSync, statSync } from "fs";
-import { basename, join } from "path";
+import { join } from "path";
 import { formatBytes, moveArchive, uniqueTargetPath } from "./compress";
 import type ExportFolderPlugin from "./main";
 
@@ -13,13 +13,15 @@ export class SaveModal extends Modal {
     private folderName: string,
     private parentDir: string,
     private baseName: string,
-    private ext: string
+    private ext: string,
+    private destination: "next-to-folder" | "download",
+    private archiveName: string
   ) {
     super(plugin.app);
   }
 
   onOpen() {
-    const fileName = basename(this.archivePath);
+    const fileName = this.archiveName;
     let sizeLabel = "";
     try {
       sizeLabel = ` — ${formatBytes(statSync(this.archivePath).size)}`;
@@ -29,17 +31,12 @@ export class SaveModal extends Modal {
     this.titleEl.setText("Compresión finalizada");
     this.contentEl.createEl("p", { text: `«${fileName}»${sizeLabel}` });
 
-    const buttons = new Setting(this.contentEl);
-    buttons.addButton((b) =>
-      b.setButtonText("Guardar junto a la carpeta").onClick(() => this.saveNextTo())
-    );
-    buttons.addButton((b) =>
-      b.setButtonText("Descargar").setCta().onClick(() => void this.download())
-    );
+    if (this.destination === "next-to-folder") this.saveNextTo();
+    else void this.download();
   }
 
   private saveNextTo() {
-    const dest = uniqueTargetPath(this.parentDir, this.baseName, this.ext);
+    const dest = uniqueTargetPath(this.parentDir, this.archiveName.replace(new RegExp(`\\.${this.ext.replace(/\./g, "\\.")}$`, "i"), ""), this.ext);
     try {
       moveArchive(this.archivePath, dest);
       this.done = true;
@@ -66,23 +63,17 @@ export class SaveModal extends Modal {
       this.close();
       return;
     }
-    if (savePath === null) return; // diálogo cancelado por el usuario
-
-    // fallback: abrir la carpeta temporal en el explorador
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires -- electron no se puede empaquetar; se resuelve en runtime
-      const { shell } = require("electron") as { shell: { showItemInFolder(p: string): void } };
-      shell.showItemInFolder(this.archivePath);
-      new Notice(`Archivo temporal en: ${this.archivePath}`);
-      this.done = true; // el usuario decide: no borrar
-      this.plugin.finalizeJob(false);
-    } catch {
-      new Notice(`No se pudo abrir el explorador. Archivo en: ${this.archivePath}`);
+    if (savePath === undefined) {
+      this.close(); // onClose elimina el temporal
+      return;
     }
+
+    this.plugin.finalizeJob();
+    new Notice("No hay diálogo de guardado disponible; se eliminó el archivo temporal.");
     this.close();
   }
 
-  /** Devuelve la ruta elegida, null si el SO no ofreció diálogo (fallback), o undefined si el usuario canceló. */
+  /** Devuelve la ruta elegida; null si no hay diálogo; undefined si se canceló. */
   private async showNativeDialog(): Promise<string | null | undefined> {
     try {
       // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires -- electron no se puede empaquetar; se resuelve en runtime
@@ -101,8 +92,8 @@ export class SaveModal extends Modal {
       const dialog = electron.remote?.dialog ?? remoteMod?.dialog;
       if (!dialog?.showSaveDialog) return null;
       const res = await dialog.showSaveDialog({
-        defaultPath: join(this.parentDir, `${this.baseName}.${this.ext}`),
-        filters: [{ name: this.ext, extensions: this.ext.split(".") }],
+        defaultPath: join(this.parentDir, this.archiveName),
+        filters: [{ name: this.ext, extensions: [this.ext] }],
       });
       if (res.canceled || !res.filePath) return undefined;
       return res.filePath;

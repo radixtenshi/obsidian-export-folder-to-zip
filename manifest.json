@@ -1,7 +1,7 @@
 {
   "id": "export-folder-to-zip",
   "name": "Export Folder to ZIP",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "minAppVersion": "1.13.0",
   "description": "Compress vault folders with 7-Zip or WinRAR: progress, cancel, background mode and flexible save options.",
   "author": "R4D1X",

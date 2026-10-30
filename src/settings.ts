@@ -1,6 +1,7 @@
 import { App, Notice, PluginSettingTab, SettingDefinitionItem } from "obsidian";
 import { ENGINES, detectInstalled, engineKindForBinary } from "./engines";
 import { BinaryModal } from "./modal-binary";
+import { Download7ZipModal } from "./download-7zip";
 import type ExportFolderPlugin from "./main";
 
 export interface BinaryEntry {
@@ -13,6 +14,8 @@ export interface ExportSettings {
   activeBinaryPath: string;
   formatId: string;
   levelId: string;
+  custom7ZipUrl: string;
+  custom7ZipSha256: string;
 }
 
 export const DEFAULT_SETTINGS: ExportSettings = {
@@ -20,6 +23,8 @@ export const DEFAULT_SETTINGS: ExportSettings = {
   activeBinaryPath: "",
   formatId: "zip",
   levelId: "5",
+  custom7ZipUrl: "",
+  custom7ZipSha256: "",
 };
 
 export class ExportSettingTab extends PluginSettingTab {
@@ -57,12 +62,6 @@ export class ExportSettingTab extends PluginSettingTab {
           name: "Agregar binario",
           action: () => this.editBinary(null),
         },
-        extraButtons: [
-          (b) =>
-            b.setIcon("lucide-search").setTooltip("Detectar instalados").onClick(() => {
-              void this.detectBinaries();
-            }),
-        ],
         onDelete: (index) => {
           void this.removeBinary(index);
         },
@@ -71,6 +70,41 @@ export class ExportSettingTab extends PluginSettingTab {
           searchable: false,
           action: (_el: HTMLElement, index: number) => this.editBinary(index),
         })),
+      },
+      {
+        type: "group",
+        heading: "Instalar un motor de compresión",
+        items: [
+          {
+            name: "Buscar instalaciones locales",
+            desc: "Busca 7-Zip y WinRAR instalados en ubicaciones habituales y en PATH.",
+            render: (setting) => {
+              setting.addButton((button) => button
+                .setButtonText("Buscar ahora")
+                .onClick(() => void this.detectBinaries()));
+            },
+          },
+          {
+            name: "Descargar 7-Zip",
+            desc: "Instala 7-Zip para usarlo como motor de compresión de este plugin.",
+            render: (setting) => {
+              setting.addButton((button) => button
+                .setButtonText("Descargar 7-Zip…")
+                .setCta()
+                .onClick(() => new Download7ZipModal(this.plugin).open()));
+            },
+          },
+          {
+            name: "URL directa de un binario alternativo",
+            desc: "Opcional. Pegá un enlace HTTPS directo al ejecutable compatible con este sistema; completá también su SHA-256.",
+            control: { type: "text", key: "custom7ZipUrl", placeholder: "https://…/7za.exe" },
+          },
+          {
+            name: "SHA-256 del binario alternativo",
+            desc: "Obligatorio cuando se configura una URL alternativa; el archivo se rechaza si no coincide.",
+            control: { type: "text", key: "custom7ZipSha256", placeholder: "64 caracteres hexadecimales" },
+          },
+        ],
       },
       {
         type: "group",
@@ -118,6 +152,12 @@ export class ExportSettingTab extends PluginSettingTab {
       case "levelId":
         s.levelId = String(value);
         break;
+      case "custom7ZipUrl":
+        s.custom7ZipUrl = String(value).trim();
+        break;
+      case "custom7ZipSha256":
+        s.custom7ZipSha256 = String(value).trim().toLowerCase();
+        break;
       default:
         return;
     }
@@ -163,11 +203,18 @@ export class ExportSettingTab extends PluginSettingTab {
         added++;
       }
     }
-    if (!s.activeBinaryPath && s.binaries.length) {
-      s.activeBinaryPath = s.binaries[0].path;
+    if (found.length) {
+      const activeStillExists = found.some((entry) => entry.path === s.activeBinaryPath) || s.binaries.some((entry) => entry.path === s.activeBinaryPath);
+      if (!activeStillExists) s.activeBinaryPath = found[0].path;
+      const activeKind = engineKindForBinary(s.activeBinaryPath);
+      if (activeKind) {
+        s.formatId = ENGINES[activeKind].formats[0].id;
+        s.levelId = ENGINES[activeKind].levels.some((level) => level.id === "5") ? "5" : ENGINES[activeKind].levels[0].id;
+      }
     }
     await this.plugin.saveSettings();
     this.update();
-    if (!added) new Notice("No se detectaron binarios nuevos.");
+    if (found.length) new Notice(`Detección finalizada: ${found.length} motor(es), activo: ${s.binaries.find((entry) => entry.path === s.activeBinaryPath)?.name ?? s.activeBinaryPath}.`);
+    else if (!added) new Notice("No se encontraron 7-Zip ni WinRAR en las ubicaciones habituales ni en PATH.");
   }
 }

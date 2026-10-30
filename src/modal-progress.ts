@@ -35,7 +35,7 @@ export class ProgressModal extends Modal {
 
   update(percent: number | null) {
     if (percent === null) {
-      this.pctEl.setText("Comprimiendo…");
+      this.pctEl.setText("Motor iniciado; esperando progreso…");
       return;
     }
     this.pctEl.setText(`${percent}%`);
